@@ -500,35 +500,17 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         }
     }
     
-    function onPlayerCardClick(card, cardEl) { // Renamed from onHandCardClick
-        if (!state.gameStarted) { // If game not started (placement phase)
-            // Just select the card to place, no action panel for attack
-            if (state.selectedCard && state.selectedCard.id === card.id) {
-                state.selectedCard = null;
-                cardEl.classList.remove('selected');
-            } else {
-                const prevSelected = document.querySelector('.card.selected');
-                if (prevSelected) prevSelected.classList.remove('selected');
-                
-                state.selectedCard = card;
-                cardEl.classList.add('selected');
-                addLog(`手札から ${card.suit} ${card.rank} を選択しました。配置する場所を選んでください。`);
-            }
-            return; // Skip attack logic
-        }
-
-        // If game started and it's not player's turn, prevent any actions
+    function onPlayerHandCardClick(card, cardEl) {
         if (state.gameStarted && state.turn !== 'player') {
             addLog('相手の番です。');
             return;
         }
 
-        // --- Support Card Usage or Attack/Action Phase Logic ---
+        // --- Support Card Usage ---
         if (card.type === 'support') {
             addLog(`サポートカード ${card.rank} を使用しました！`);
-            // Remove card from hand
             state.player.hand = state.player.hand.filter(c => c.id !== card.id);
-            state.player.graveyard.push(card); // Move used support card to graveyard
+            state.player.graveyard.push(card);
 
             switch (card.effect) {
                 case 'skip_turn':
@@ -549,8 +531,6 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
                     }
                     break;
                 case 'heal_2':
-                    // Need to select a target card on field to heal
-                    // For now, randomly heal one of player's field cards
                     const playerFieldCards = state.player.field.filter(c => c !== null);
                     if (playerFieldCards.length > 0) {
                         const cardToHeal = playerFieldCards[Math.floor(Math.random() * playerFieldCards.length)];
@@ -561,21 +541,45 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
                     }
                     break;
             }
-            state.selectedCard = null; // Deselect after use
-            render(); // Update UI after support card effect
-            return; // Support card used, skip attack logic
+            state.selectedCard = null;
+            render();
+            return;
         }
 
-        // --- Attack/Action Phase Logic for Monster Cards ---
+        // --- Monster Card Placement ---
+        if (card.type === 'monster') {
+            if (state.selectedCard && state.selectedCard.id === card.id) {
+                state.selectedCard = null;
+                cardEl.classList.remove('selected');
+            } else {
+                const prevSelectedHandCard = document.querySelector('#player-hand .card.selected');
+                if (prevSelectedHandCard) prevSelectedHandCard.classList.remove('selected');
+                
+                state.selectedCard = card;
+                cardEl.classList.add('selected');
+                addLog(`手札から ${card.suit} ${card.rank} を選択しました。配置する場所を選んでください。`);
+            }
+            return;
+        }
+    }
+
+    function onPlayerFieldCardClick(card, cardEl) { // Handles clicks on player's field monster cards
+        if (!state.gameStarted || state.turn !== 'player') {
+            addLog('ゲームが開始していないか、相手の番です。');
+            return;
+        }
+        if (card.type !== 'monster') { // Only monster cards on field can initiate attack
+            addLog('フィールドのモンスターカードのみ攻撃を選択できます。');
+            return;
+        }
+
         const actionPanel = document.getElementById('action-panel');
         const attackingCardInfo = document.getElementById('attacking-card-info');
 
-        // If a card is already selected for attack, clicking another player card
-        // deselects the current attacking card and selects the new one.
         if (state.attackingCardId) {
             const prevAttackingCardEl = document.querySelector(`.card[data-card-id="${state.attackingCardId}"]`);
             if (prevAttackingCardEl) prevAttackingCardEl.classList.remove('selected-attack');
-            if (state.attackingCardId === card.id) { // Clicked the same attacking card
+            if (state.attackingCardId === card.id) {
                 state.attackingCardId = null;
                 actionPanel.style.display = 'none';
                 return;
@@ -647,7 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         playerHandEl.innerHTML = '';
         state.player.hand.forEach(card => {
             const cardEl = createCardElement(card);
-            cardEl.addEventListener('click', () => onPlayerCardClick(card, cardEl));
+            cardEl.addEventListener('click', () => onPlayerHandCardClick(card, cardEl)); // Use specific hand click handler
             playerHandEl.appendChild(cardEl);
         });
 
@@ -675,7 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             if (card) {
                 const cardEl = createCardElement(card);
                 if (playerType === 'player') {
-                    cardEl.addEventListener('click', () => onPlayerCardClick(card, cardEl)); // Player's own field cards
+                    cardEl.addEventListener('click', () => onPlayerFieldCardClick(card, cardEl)); // Player's own field cards
                 } else { // Opponent's field cards
                     cardEl.addEventListener('click', () => onOpponentFieldCardClick(card, cardEl));
                 }
