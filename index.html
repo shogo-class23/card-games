@@ -85,6 +85,8 @@
         .field {
             display: grid;
             grid-template-columns: repeat(3, var(--card-width));
+            grid-template-rows: repeat(2, var(--card-height)); /* Explicitly define rows height */
+            grid-auto-flow: dense; /* Allow elements to fill gaps regardless of source order */
             justify-content: center; /* Center the grid of cards */
             gap: 0px;
             padding: 0px;
@@ -719,28 +721,45 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         checkWinCondition(); // Check win/loss conditions
     }
 
-    function renderField(fieldId, fieldCards, playerType) { // Added playerType parameter
+    function renderField(fieldId, fieldCards, playerType) {
         const fieldEl = document.getElementById(fieldId);
         fieldEl.innerHTML = '';
+
+        // Internal array index to desired visual slot number
+        const playerVisualMap = [1, 2, 3, 6, 5, 4]; // index 0->1, 1->2, 2->3, 3->6, 4->5, 5->4
+        const opponentVisualMap = [4, 5, 6, 3, 2, 1]; // index 0->4, 1->5, 2->6, 3->3, 4->2, 5->1
+
+        // Map internal index to a grid order value (0-5 or 0-based for each row/column)
+        // This is based on user's request:
+        // Player: Top row (1,2,3) = index 0,1,2. Bottom row (6,5,4) = index 5,4,3
+        // Opponent: Top row (4,5,6) = index 3,4,5. Bottom row (3,2,1) = index 2,1,0
+        const playerGridOrderMap = [0, 1, 2, 5, 4, 3]; // Internal array index to grid order (0=top-left, 5=bottom-right)
+        const opponentGridOrderMap = [5, 4, 3, 2, 1, 0]; // Internal array index to grid order (reversed top/bottom for opponent)
+
         fieldCards.forEach((card, index) => {
+            const visualSlotNumber = (playerType === 'player') ? playerVisualMap[index] : opponentVisualMap[index];
+            const orderValue = (playerType === 'player') ? playerGridOrderMap[index] : opponentGridOrderMap[index];
+
+            let displayElement;
             if (card) {
-                const cardEl = createCardElement(card);
+                displayElement = createCardElement(card);
                 if (playerType === 'player') {
-                    cardEl.addEventListener('click', () => onPlayerFieldCardClick(card, cardEl)); // Player's own field cards
-                } else { // Opponent's field cards
-                    cardEl.addEventListener('click', () => onOpponentFieldCardClick(card, cardEl));
+                    displayElement.addEventListener('click', () => onPlayerFieldCardClick(card, displayElement));
+                } else {
+                    displayElement.addEventListener('click', () => onOpponentFieldCardClick(card, displayElement));
                 }
-                fieldEl.appendChild(cardEl);
             } else {
                 const slotEl = document.createElement('div');
                 slotEl.className = 'card-slot';
                 slotEl.dataset.slotIndex = index;
-                slotEl.innerHTML = `<span class="slot-number">${index + 1}</span>`; // Add slot number
+                slotEl.innerHTML = `<span class="slot-number">${visualSlotNumber}</span>`; // Add slot number
                 if (fieldId === 'player-field') {
                     slotEl.addEventListener('click', () => onSlotClick(index));
                 }
-                fieldEl.appendChild(slotEl);
+                displayElement = slotEl;
             }
+            displayElement.style.order = orderValue; // Set order for CSS Grid
+            fieldEl.appendChild(displayElement);
         });
     }
 
