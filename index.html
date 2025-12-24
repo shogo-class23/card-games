@@ -425,7 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
                 <span>${card.rank}</span>
                 <span class="attribute">${card.suit.charAt(0).toUpperCase()}</span>
             </div>
-            <div class="hp-display">${card.hp}</div>
+            <div class="hp-display">${card.hp}/${card.maxHp}</div>
             <div class="card-body">
                 <span class="attribute">${card.suit}</span>
             </div>
@@ -660,9 +660,16 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     }
 
     function rotateField(fieldArray) {
-        if (fieldArray.length === 0) return [];
-        const lastCard = fieldArray[fieldArray.length - 1];
-        const newField = [lastCard, ...fieldArray.slice(0, fieldArray.length - 1)];
+        if (fieldArray.length !== 6) return fieldArray; // Expecting a 6-slot field
+
+        const newField = new Array(6).fill(null);
+        newField[1] = fieldArray[0]; // 0 -> 1
+        newField[2] = fieldArray[1]; // 1 -> 2
+        newField[5] = fieldArray[2]; // 2 -> 5 (後衛右端)
+        newField[4] = fieldArray[5]; // 5 -> 4
+        newField[3] = fieldArray[4]; // 4 -> 3
+        newField[0] = fieldArray[3]; // 3 -> 0 (前衛左端)
+
         return newField;
     }
 
