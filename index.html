@@ -149,6 +149,13 @@
             color: #FFD700; /* Gold */
             text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
         }
+        .card-message {
+            font-size: 18px;
+            color: #ADD8E6; /* Light Blue */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            margin-top: 5px;
+            display: none; /* Hidden by default */
+        }
 
         /* Player Hand */
         .player-hand {
@@ -328,6 +335,7 @@
             <button id="placement-ok-button" class="game-button">配置OK</button>
             <button id="end-turn-button" class="game-button" style="display:none;">ターン終了</button>
             <div id="current-turn-display" class="turn-display"></div>
+            <div id="card-use-message" class="card-message"></div>
         </div>
         <div id="player-score" class="score">0</div>
     </div>
@@ -460,19 +468,35 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             return cardEl;
         }
 
-        cardEl.innerHTML = `
-            <div class="card-header">
-                <span>${card.rank}</span>
-                <span class="attribute">${card.suit.charAt(0).toUpperCase()}</span>
-            </div>
-            <div class="hp-display">${card.hp}/${card.maxHp}</div>
-            <div class="card-body">
-                <span class="attribute">${card.suit}</span>
-            </div>
-            <div class="card-footer">
-                <span>${card.rank}</span>
-            </div>
-        `;
+        if (card.type === 'support') {
+            cardEl.innerHTML = `
+                <div class="card-header">
+                    <span>${card.rank}</span>
+                    <span class="attribute">SUPPORT</span>
+                </div>
+                <div class="card-body">
+                    <span class="attribute">${card.rank}</span>
+                </div>
+                <div class="card-footer">
+                    <span>${card.rank}</span>
+                </div>
+            `;
+            cardEl.style.backgroundColor = '#999'; // Gray background for support cards
+        } else {
+            cardEl.innerHTML = `
+                <div class="card-header">
+                    <span>${card.rank}</span>
+                    <span class="attribute">${card.suit.charAt(0).toUpperCase()}</span>
+                </div>
+                <div class="hp-display">${card.hp}/${card.maxHp}</div>
+                <div class="card-body">
+                    <span class="attribute">${card.suit}</span>
+                </div>
+                <div class="card-footer">
+                    <span>${card.rank}</span>
+                </div>
+            `;
+        }
         return cardEl;
     }
 
@@ -506,12 +530,13 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             return;
         }
 
-        // --- Support Card Usage ---
-        if (card.type === 'support') {
-            addLog(`サポートカード ${card.rank} を使用しました！`);
-            state.player.hand = state.player.hand.filter(c => c.id !== card.id);
-            state.player.graveyard.push(card);
-
+                    // --- Support Card Usage ---
+                    if (card.type === 'support') {
+                        displayCardUseMessage(`${card.rank} を使用しました！`); // Use new display function
+                        addLog(`サポートカード ${card.rank} を使用しました！`); // Keep log too
+                        // Remove card from hand
+                        state.player.hand = state.player.hand.filter(c => c.id !== card.id);
+                        state.player.graveyard.push(card); // Move used support card to graveyard
             switch (card.effect) {
                 case 'skip_turn':
                     state.opponent.skipNextTurn = true;
@@ -645,6 +670,16 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         render(); // Re-render to reflect changes
     }
 
+    function displayCardUseMessage(message) {
+        const cardUseMessageEl = document.getElementById('card-use-message');
+        cardUseMessageEl.textContent = message;
+        cardUseMessageEl.style.display = 'block';
+        setTimeout(() => {
+            cardUseMessageEl.style.display = 'none';
+            cardUseMessageEl.textContent = '';
+        }, 2000); // Message disappears after 2 seconds
+    }
+
     function render() {
         // Render Player Hand
         const playerHandEl = document.getElementById('player-hand');
@@ -707,6 +742,10 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
 
         if (!state.selectedCard) {
             addLog('先に手札から配置するカードを選択してください。');
+            return;
+        }
+        if (state.selectedCard.type === 'support') { // Support cards cannot be placed on field
+            addLog('サポートカードはフィールドに配置できません。');
             return;
         }
         if (state.player.field[index]) {
