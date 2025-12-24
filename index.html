@@ -85,8 +85,8 @@
         /* Fields */
         .field {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(2, 1fr);
+            grid-template-columns: repeat(3, var(--card-width));
+            justify-content: center; /* Center the grid of cards */
             gap: 0px;
             padding: 0px;
             background: var(--field-bg);
@@ -214,6 +214,19 @@
             transform: scale(1.1);
             border-color: yellow;
             box-shadow: 0 0 15px yellow;
+        }
+        .hp-display {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 1;
+            z-index: 10;
         }
 
         /* Log Area */
@@ -355,16 +368,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span>${card.rank}</span>
                 <span class="attribute">${card.suit.charAt(0).toUpperCase()}</span>
             </div>
+            <div class="hp-display">${card.hp}</div>
             <div class="card-body">
                 <span class="attribute">${card.suit}</span>
             </div>
             <div class="card-footer">
                 <span>${card.rank}</span>
-            </div>
-            <div class="status-bar">
-                <div class="hp-bar" style="width: ${(card.hp / card.maxHp) * 100}%">
-                    ${card.hp}/${card.maxHp}
-                </div>
             </div>
         `;
         return cardEl;
