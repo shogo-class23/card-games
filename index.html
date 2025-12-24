@@ -299,6 +299,7 @@
         <div id="opponent-score" class="score">0</div>
         <div class="center-controls">
             <button id="placement-ok-button" class="game-button">配置OK</button>
+            <button id="end-turn-button" class="game-button" style="display:none;">ターン終了</button>
             <div id="current-turn-display" class="turn-display"></div>
         </div>
         <div id="player-score" class="score">0</div>
@@ -356,7 +357,9 @@ document.addEventListener('DOMContentLoaded', () => {
             totalDeck: 30,
         },
         selectedCard: null,
-        gameStarted: false, // New property
+        gameStarted: false,
+        turn: null, // Track current player: 'player' or 'opponent'
+        turnCount: 0, // Track the number of turns
     };
 
     function createDeck() {
@@ -409,6 +412,22 @@ document.addEventListener('DOMContentLoaded', () => {
         logArea.scrollTop = logArea.scrollHeight;
     }
     
+    function updateTurnDisplay() {
+        const turnDisplay = document.getElementById('current-turn-display');
+        const endTurnButton = document.getElementById('end-turn-button'); // Get button here
+        if (state.gameStarted && state.turn) {
+            turnDisplay.textContent = `${state.turn === 'player' ? 'あなたの番' : '相手の番'}`;
+            if (state.turn === 'player') {
+                endTurnButton.style.display = 'block';
+            } else {
+                endTurnButton.style.display = 'none';
+            }
+        } else {
+            turnDisplay.textContent = '配置準備中';
+            endTurnButton.style.display = 'none'; // Ensure button is hidden during setup
+        }
+    }
+    
     function render() {
         // Render Player Hand
         const playerHandEl = document.getElementById('player-hand');
@@ -428,6 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('#player-graveyard .graveyard-label').textContent = `墓地: ${state.player.graveyard.length}`;
         document.querySelector('#opponent-deck .deck-label').textContent = `デッキ: ${state.opponent.deckCount}/${state.opponent.totalDeck}`;
         document.querySelector('#opponent-graveyard .graveyard-label').textContent = `墓地: ${state.opponent.graveyard.length}`;
+        updateTurnDisplay(); // Update turn display on render
     }
 
     function renderField(fieldId, fieldCards) {
@@ -450,11 +470,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function onHandCardClick(card, cardEl) {
+        if (state.gameStarted && state.turn !== 'player') {
+            addLog('相手の番です。');
+            return;
+        }
         if (state.selectedCard && state.selectedCard.id === card.id) {
             state.selectedCard = null;
             cardEl.classList.remove('selected');
         } else {
-            // Deselect previous
             const prevSelected = document.querySelector('.card.selected');
             if (prevSelected) prevSelected.classList.remove('selected');
             
@@ -465,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function onSlotClick(index) {
-        if (state.gameStarted) { // Prevent placement after game starts
+        if (state.gameStarted) {
             addLog('ゲーム開始後は配置できません。');
             return;
         }
@@ -473,13 +496,11 @@ document.addEventListener('DOMContentLoaded', () => {
             addLog('先に手札から配置するカードを選択してください。');
             return;
         }
-
         if (state.player.field[index]) {
             addLog('その場所には既にカードが配置されています。');
             return;
         }
 
-        // Place the card
         const cardToPlace = state.selectedCard;
         state.player.hand = state.player.hand.filter(c => c.id !== cardToPlace.id);
         state.player.field[index] = cardToPlace;
@@ -490,11 +511,36 @@ document.addEventListener('DOMContentLoaded', () => {
         render();
     }
 
+    function opponentTurnLogic() {
+        addLog("相手のターンです...");
+        // Simulate opponent action for a few seconds
+        setTimeout(() => {
+            // Opponent could draw, place cards, attack, etc.
+            // For now, just ends turn
+            addLog("相手がターンを終了しました。");
+            endTurn();
+        }, 3000); // 3 second delay
+    }
+
+    function startTurn(player) {
+        state.turn = player;
+        state.turnCount++;
+        addLog(`ターン ${state.turnCount}: ${player === 'player' ? 'あなたの番' : '相手の番'}`);
+        updateTurnDisplay();
+        render(); // Ensure UI reflects current turn
+        if (player === 'opponent') {
+            opponentTurnLogic();
+        }
+    }
+
+    function endTurn() {
+        const nextPlayer = state.turn === 'player' ? 'opponent' : 'player';
+        startTurn(nextPlayer);
+    }
+
     function setupInitialState() {
-        // Initial Logs for setup phase
         addLog("メインフェーズに移行 (準備)");
         
-        // Setup player's hand (always 8 cards at start)
         state.player.hand = [
             new Card('earth', '9'),
             new Card('fire', '6'),
@@ -506,19 +552,20 @@ document.addEventListener('DOMContentLoaded', () => {
             new Card('earth', '8'),
         ];
         
-        document.getElementById('current-turn-display').textContent = '配置準備中';
-        render(); // Render initial hand and empty fields
+        updateTurnDisplay(); // Set initial '配置準備中' text
+        render();
     }
 
-    // --- Game Start Logic ---
     const placementOkButton = document.getElementById('placement-ok-button');
+    const endTurnButton = document.getElementById('end-turn-button');
+
     placementOkButton.addEventListener('click', () => {
-        if (state.gameStarted) return; // Prevent multiple clicks
+        if (state.gameStarted) return;
 
-        placementOkButton.style.display = 'none'; // Hide button
+        placementOkButton.style.display = 'none';
 
-        // Opponent places 3 monsters (randomly for now)
-        const opponentDeck = createDeck(); // Temporary deck for opponent placement
+        // Opponent places 3 monsters
+        const opponentDeck = createDeck();
         for (let i = 0; i < 3; i++) {
             const randomCard = opponentDeck[Math.floor(Math.random() * opponentDeck.length)];
             let randomSlot;
@@ -526,22 +573,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 randomSlot = Math.floor(Math.random() * 6);
             } while (state.opponent.field[randomSlot] !== null);
             state.opponent.field[randomSlot] = randomCard;
-            opponentDeck.splice(opponentDeck.indexOf(randomCard), 1); // Remove from temp deck
+            opponentDeck.splice(opponentDeck.indexOf(randomCard), 1);
         }
         addLog("相手が3体のモンスターを配置");
         addLog("プレイヤーの配置完了");
         
-        // Randomly decide starting player
-        const startingPlayer = Math.random() < 0.5 ? 'player' : 'opponent';
-        state.turn = startingPlayer;
-        addLog(`${startingPlayer === 'player' ? 'あなたが先行' : '相手が先行'}です！`);
-        
-        state.gameStarted = true;
-        document.getElementById('current-turn-display').textContent = `${state.turn === 'player' ? 'あなたの番' : '相手の番'}`;
-        render(); // Re-render to show opponent's cards and update turn display
+        addLog("先行決定ルーレット...");
+        setTimeout(() => {
+            const startingPlayer = Math.random() < 0.5 ? 'player' : 'opponent';
+            state.gameStarted = true;
+            addLog(`${startingPlayer === 'player' ? 'あなたが先行' : '相手が先行'}です！`);
+            startTurn(startingPlayer); // Start the first turn
+        }, 2000); // 2 second delay for roulette anticipation
     });
     
-    // Start the game setup
+    endTurnButton.addEventListener('click', () => {
+        if (state.gameStarted && state.turn === 'player') {
+            endTurnButton.style.display = 'none'; // Hide button immediately
+            endTurn();
+        }
+    });
+
     setupInitialState();
 });
 </script>
