@@ -59,11 +59,11 @@
             padding: 5px 20px;
             background: rgba(0, 0, 0, 0.2);
         }
-        .deck-info, .graveyard-info {
+        .deck-info, .graveyard-info, .hand-info {
             display: flex;
             align-items: center;
         }
-        .deck-info .deck, .graveyard-info .graveyard {
+        .deck-info .deck, .graveyard-info .graveyard, .hand-info .hand {
             width: calc(var(--card-width) * 0.7);
             height: calc(var(--card-height) * 0.7);
             border: 2px solid #888;
@@ -75,11 +75,10 @@
             background: #666;
             margin: 0 10px;
         }
-        .deck-info span, .graveyard-info span {
+        .deck-info span, .graveyard-info span, .hand-info span {
             font-size: 14px;
         }
-        .opponent-area .deck { order: 1; }
-        .opponent-area .deck-label { order: 2; }
+
 
 
         /* Fields */
@@ -307,6 +306,10 @@
     <div class="opponent-area">
         <div id="opponent-field" class="field"></div>
         <div class="info-bar">
+            <div id="opponent-hand" class="hand-info">
+                <span class="hand-label">手札: 0</span>
+                <div class="hand"></div>
+            </div>
             <div id="opponent-graveyard" class="graveyard-info">
                 <span class="graveyard-label">墓地: 0</span>
                 <div class="graveyard"></div>
@@ -341,6 +344,10 @@
             <div id="player-graveyard" class="graveyard-info">
                 <div class="graveyard"></div>
                 <span class="graveyard-label">墓地: 0</span>
+            </div>
+            <div id="player-hand" class="hand-info">
+                <div class="hand"></div>
+                <span class="hand-label">手札: 0</span>
             </div>
         </div>
     </div>
@@ -567,11 +574,14 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         renderField('player-field', state.player.field, 'player');
         renderField('opponent-field', state.opponent.field, 'opponent');
 
-        // Update Info Panels (static as per requirement)
+        // Update Info Panels
         document.querySelector('#player-deck .deck-label').textContent = `デッキ: ${state.player.deckCount}/${state.player.totalDeck}`;
         document.querySelector('#player-graveyard .graveyard-label').textContent = `墓地: ${state.player.graveyard.length}`;
+        document.querySelector('#player-hand .hand-label').textContent = `手札: ${state.player.hand.length}`; // New: Player hand count
+
         document.querySelector('#opponent-deck .deck-label').textContent = `デッキ: ${state.opponent.deckCount}/${state.opponent.totalDeck}`;
         document.querySelector('#opponent-graveyard .graveyard-label').textContent = `墓地: ${state.opponent.graveyard.length}`;
+        document.querySelector('#opponent-hand .hand-label').textContent = `手札: ${state.opponent.hand.length}`; // New: Opponent hand count
         
         updateTurnDisplay(); // Update turn display on render
     }
