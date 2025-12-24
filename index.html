@@ -789,6 +789,13 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         }, 2000); // Message disappears after 2 seconds
     }
 
+    function displayGameEndMessage(message) {
+        const cardUseMessageEl = document.getElementById('card-use-message');
+        cardUseMessageEl.textContent = message;
+        cardUseMessageEl.style.display = 'block'; // Make it visible and keep it visible
+        // No setTimeout to hide it, it will persist until game restarts
+    }
+
     function onAttachPowerButtonClick(targetCard) {
         const player = state.player;
 
@@ -1029,12 +1036,14 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     }
 
     function checkWinCondition() {
+        if (!state.gameStarted) return; // Only check win/loss once the game has started
+
         const playerMonsters = state.player.field.filter(c => c !== null && c.type === 'monster').length;
         const opponentMonsters = state.opponent.field.filter(c => c !== null && c.type === 'monster').length;
 
         if (playerMonsters === 0) {
             addLog('あなたのフィールド上のモンスターがすべていなくなりました。');
-            alert('ゲームオーバー！あなたの負けです！'); // Prominent message
+            displayGameEndMessage('ゲームオーバー！あなたの負けです！'); // Display message on screen
             state.gameStarted = false; // Stop game
             placementOkButton.style.display = 'block';
             placementOkButton.textContent = 'ゲームを再開';
@@ -1042,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             attachPowerCentralButton.style.display = 'none'; // Hide central power button on game over
         } else if (opponentMonsters === 0) {
             addLog('相手のフィールド上のモンスターがすべていなくなりました。');
-            alert('勝利！おめでとうございます！'); // Prominent message
+            displayGameEndMessage('勝利！おめでとうございます！'); // Display message on screen
             state.gameStarted = false; // Stop game
             placementOkButton.style.display = 'block';
             placementOkButton.textContent = 'ゲームを再開';
@@ -1096,7 +1105,11 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     placementOkButton.disabled = true; // Initially disabled
 
     placementOkButton.addEventListener('click', () => {
-        if (state.gameStarted) return;
+        if (!state.gameStarted && placementOkButton.textContent === 'ゲームを再開') {
+            window.location.reload(); // Reload the page to restart the game
+            return;
+        }
+
         if (state.player.field.every(slot => slot === null)) { // Check if any card is placed
             addLog('フィールドに最低1枚のカードを配置してください。');
             return;
