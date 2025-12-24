@@ -174,9 +174,18 @@
         .card-slot {
             width: var(--card-width);
             height: var(--card-height);
-            border: none; /* No border for complete adjacency */
+            border: none;
             border-radius: 8px;
             background-color: rgba(255, 255, 255, 0.05);
+            display: flex; /* Make it a flex container to center content */
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+        }
+        .slot-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.3); /* Semi-transparent white */
+            pointer-events: none; /* Do not interfere with slot click */
         }
         .card {
             width: var(--card-width);
@@ -452,13 +461,29 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     }
     
     function onPlayerCardClick(card, cardEl) { // Renamed from onHandCardClick
-        if (state.gameStarted && state.turn !== 'player') { // Only prevent actions if game started AND not player's turn
+        if (!state.gameStarted) { // If game not started (placement phase)
+            // Just select the card to place, no action panel for attack
+            if (state.selectedCard && state.selectedCard.id === card.id) {
+                state.selectedCard = null;
+                cardEl.classList.remove('selected');
+            } else {
+                const prevSelected = document.querySelector('.card.selected');
+                if (prevSelected) prevSelected.classList.remove('selected');
+                
+                state.selectedCard = card;
+                cardEl.classList.add('selected');
+                addLog(`手札から ${card.suit} ${card.rank} を選択しました。配置する場所を選んでください。`);
+            }
+            return; // Skip attack logic
+        }
+
+        // If game started and it's not player's turn, prevent any actions
+        if (state.gameStarted && state.turn !== 'player') {
             addLog('相手の番です。');
             return;
         }
-        // If game not started (placement phase), or if it's player's turn (attack/action phase)
-        // allow card selection logic to proceed.
 
+        // --- Attack/Action Phase Logic ---
         const actionPanel = document.getElementById('action-panel');
         const attackingCardInfo = document.getElementById('attacking-card-info');
 
@@ -567,6 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
                 const slotEl = document.createElement('div');
                 slotEl.className = 'card-slot';
                 slotEl.dataset.slotIndex = index;
+                slotEl.innerHTML = `<span class="slot-number">${index + 1}</span>`; // Add slot number
                 if (fieldId === 'player-field') {
                     slotEl.addEventListener('click', () => onSlotClick(index));
                 }
@@ -596,6 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         state.selectedCard = null;
 
         addLog(`「${cardToPlace.suit} ${cardToPlace.rank}」をフィールドに配置しました。`);
+        placementOkButton.disabled = false; // Enable button once a card is placed
         render();
     }
 
@@ -648,8 +675,14 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     const placementOkButton = document.getElementById('placement-ok-button');
     const endTurnButton = document.getElementById('end-turn-button');
 
+    placementOkButton.disabled = true; // Initially disabled
+
     placementOkButton.addEventListener('click', () => {
         if (state.gameStarted) return;
+        if (state.player.field.every(slot => slot === null)) { // Check if any card is placed
+            addLog('フィールドに最低1枚のカードを配置してください。');
+            return;
+        }
 
         placementOkButton.style.display = 'none';
 
