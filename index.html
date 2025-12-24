@@ -628,13 +628,58 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
 
     function opponentTurnLogic() {
         addLog("相手のターンです...");
-        // Simulate opponent action for a few seconds
-        setTimeout(() => {
-            // Opponent could draw, place cards, attack, etc.
-            // For now, just ends turn
-            addLog("相手がターンを終了しました。");
-            endTurn();
-        }, 3000); // 3 second delay
+        let opponentAttacksLeft = Math.floor(Math.random() * 3) + 1; // Opponent attacks 1 to 3 times
+        
+        const performOpponentAttack = () => {
+            if (opponentAttacksLeft <= 0 || state.player.field.every(c => c === null)) {
+                addLog("相手がターンを終了しました。");
+                endTurn();
+                return;
+            }
+
+            // Find an opponent card to attack with
+            const availableOpponentCards = state.opponent.field.filter(c => c !== null);
+            if (availableOpponentCards.length === 0) {
+                addLog("相手のフィールドに攻撃可能なカードがありません。");
+                addLog("相手がターンを終了しました。");
+                endTurn();
+                return;
+            }
+            const attackingOpponentCard = availableOpponentCards[Math.floor(Math.random() * availableOpponentCards.length)];
+
+            // Find a player card to attack
+            const availablePlayerCards = state.player.field.filter(c => c !== null);
+            if (availablePlayerCards.length === 0) {
+                addLog("プレイヤーのフィールドにカードがありません。");
+                addLog("相手がターンを終了しました。");
+                endTurn();
+                return;
+            }
+            const targetPlayerCard = availablePlayerCards[Math.floor(Math.random() * availablePlayerCards.length)];
+
+            addLog(`相手の ${attackingOpponentCard.suit} ${attackingOpponentCard.rank} があなたの ${targetPlayerCard.suit} ${targetPlayerCard.rank} を攻撃！`);
+            addLog(`あなたの ${targetPlayerCard.suit} ${targetPlayerCard.rank} のHPが ${attackingOpponentCard.value} 減少！`);
+
+            targetPlayerCard.hp -= attackingOpponentCard.value;
+            
+            if (targetPlayerCard.hp <= 0) {
+                addLog(`あなたの ${targetPlayerCard.suit} ${targetPlayerCard.rank} は破壊され、墓地へ送られました。`);
+                state.player.graveyard.push(targetPlayerCard);
+                const indexInField = state.player.field.findIndex(c => c && c.id === targetPlayerCard.id);
+                if (indexInField !== -1) {
+                    state.player.field[indexInField] = null;
+                }
+            } else {
+                addLog(`あなたの ${targetPlayerCard.suit} ${targetPlayerCard.rank} の残りHP: ${targetPlayerCard.hp}/${targetPlayerCard.maxHp}`);
+            }
+
+            opponentAttacksLeft--;
+            render(); // Re-render after each attack
+            setTimeout(performOpponentAttack, 1500); // Delay before next attack
+        };
+
+        // Initial delay before first opponent action
+        setTimeout(performOpponentAttack, 1500);
     }
 
     function startTurn(player) {
