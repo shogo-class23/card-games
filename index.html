@@ -650,8 +650,20 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
 
     function endTurn() {
         state.attackCountThisTurn = 0; // Reset attack count for the new turn
+
+        // Rotate cards on the field
+        state.player.field = rotateField(state.player.field);
+        state.opponent.field = rotateField(state.opponent.field);
+
         const nextPlayer = state.turn === 'player' ? 'opponent' : 'player';
         startTurn(nextPlayer);
+    }
+
+    function rotateField(fieldArray) {
+        if (fieldArray.length === 0) return [];
+        const lastCard = fieldArray[fieldArray.length - 1];
+        const newField = [lastCard, ...fieldArray.slice(0, fieldArray.length - 1)];
+        return newField;
     }
 
     function setupInitialState() {
@@ -727,9 +739,10 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         addLog('攻撃対象の相手カードを選択してください。');
     });
 
-    specialAttackButton.addEventListener('click', () => {
-        addLog('このカードは特別技が選択できません。');
-    });
+    // Special Attack Button is disabled in HTML, no need for listener.
+    // specialAttackButton.addEventListener('click', () => {
+    //     addLog('このカードは特別技が選択できません。');
+    // });
 
     cancelAttackButton.addEventListener('click', () => {
         // Deselect attacking card
