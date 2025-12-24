@@ -120,9 +120,25 @@
             font-size: 24px;
         }
         
-        .card-power {
+        .card-attack { /* Renamed from card-power */
             font-size: 12px;
             font-weight: bold;
+        }
+
+        .card-power-cost { /* New style for attached/required power display */
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #fff; /* White text for visibility */
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .card .card-power-btn { /* Make button visible within a card */
+            display: block;
         }
 
         .hand {
@@ -241,6 +257,27 @@
             z-index: 50; /* Ensure it's above the board but below the modal */
         }
         .log-area p { margin: 0 0 5px 0; }
+        
+        .card-power-btn {
+            background-color: var(--support-color);
+            color: var(--text-light);
+            border: none;
+            padding: 5px 8px;
+            border-radius: 5px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-top: 5px;
+            width: 80%;
+            display: none; /* Hidden by default, shown for player's board monsters */
+        }
+        
+        .card-power-btn:hover {
+            opacity: 0.8;
+        }
+
+        .card.can-be-targeted {
+            box-shadow: 0 0 15px yellow;
+        }
     </style>
 </head>
 <body>
@@ -287,19 +324,18 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Game State
-            const state = {
-                players: [
-                    { id: 0, name: 'Player', score: 0, deck: [], hand: [], board: Array(6).fill(null), graveyard: [], isSkipped: false },
-                    { id: 1, name: 'Opponent', score: 0, deck: [], hand: [], board: Array(6).fill(null), graveyard: [], isSkipped: false }
-                ],
-                currentPlayerId: null,
-                turn: 0,
-                phase: 'setup', // setup, placement, main, battle, end
-                selectedCard: { type: null, card: null, index: -1 }, // type: 'hand' or 'board'
-                log: []
-            };
-
+                            // Game State
+                        const state = {
+                            players: [
+                                { id: 0, name: 'Player', score: 0, deck: [], hand: [], board: Array(6).fill(null), graveyard: [], isSkipped: false, currentPower: 0 },
+                                { id: 1, name: 'Opponent', score: 0, deck: [], hand: [], board: Array(6).fill(null), graveyard: [], isSkipped: false, currentPower: 0 }
+                            ],
+                            currentPlayerId: null,
+                            turn: 0,
+                            phase: 'setup', // setup, placement, main, battle, end
+                            selectedCard: { type: null, card: null, index: -1 }, // type: 'hand' or 'board'
+                            log: []
+                        };
             // DOM Elements
             const G = {
                 player: {
@@ -323,6 +359,80 @@
                 modalBtn: document.getElementById('modal-button'),
                 logArea: document.getElementById('log-area')
             };
+
+            // Card Data and Deck Creation
+            let cardIdCounter = 0;
+
+            function createCard(suit, rank, suitType) {
+                cardIdCounter++;
+                let card = {
+                    id: `card-${cardIdCounter}`,
+                    name: `${suit}${rank}`,
+                    suit: suit,
+                    rank: rank,
+                    power: 0, // This was the old display power, now effectively attack
+                    attack: 0,
+                    type: 'Monster', // Default to Monster
+                    effect: null, // For Support cards
+                    requiredPower: 0, // New: Power needed to attack
+                    attachedPower: 0  // New: Current power attached
+                };
+
+                // Assign base power (now attack) based on rank
+                switch (rank) {
+                    case 'A': card.attack = 10; break;
+                    case 'K': card.attack = 8; break;
+                    case 'Q': card.attack = 7; break;
+                    case 'J': card.attack = 6; break;
+                    case '10': card.attack = 5; break;
+                    default: card.attack = parseInt(rank) || 2; break; // 2-9
+                }
+                card.power = card.attack; // Keep old 'power' property for display until removed
+
+                // Assign requiredPower based on rank
+                const rankValue = ['J', 'Q', 'K', 'A'].includes(rank) ? 11 : parseInt(rank);
+                if (rankValue >= 2 && rankValue <= 3) {
+                    card.requiredPower = 0;
+                } else if (rankValue >= 4 && rankValue <= 6) {
+                    card.requiredPower = 1;
+                } else if (rankValue >= 7 && rankValue <= 10) {
+                    card.requiredPower = 2;
+                } else if (rankValue === 11) { // J, Q, K, A (using 11 as a proxy value)
+                    card.requiredPower = 3;
+                }
+
+                // Assign special properties based on suit and type
+                if (suitType === 'fire' || suitType === 'water') {
+                    // These suits are typically 'Monster'
+                    card.type = 'Monster';
+                } else if (suitType === 'earth' || suitType === 'wind') {
+                    // These suits can be 'Support'
+                    card.type = Math.random() < 0.5 ? 'Monster' : 'Support'; // 50% chance for support
+                    if (card.type === 'Support') {
+                        card.name = `${suit}Support`;
+                        card.attack = 0;
+                        card.requiredPower = 0; // Support cards don't need power
+                        const effects = ['drawTwo', 'skip', 'shuffleHand']; // Removed boostAttack from support effects
+                        card.effect = effects[Math.floor(Math.random() * effects.length)];
+                    }
+                }
+                
+                // Removed powerEffect from Monster cards as it's no longer a power ability
+                card.powerEffect = null;
+                
+                return card;
+            }
+
+            function createDeck(suitsToInclude, allSuits, allRanks) {
+                const deck = [];
+                for (const suit of suitsToInclude) {
+                    const suitType = allSuits[suit];
+                    for (const rank of allRanks) {
+                        deck.push(createCard(suit, rank, suitType));
+                    }
+                }
+                return deck;
+            }
 
             // --- CORE GAME LOGIC ---
             function initGame() {
@@ -418,6 +528,10 @@
                 state.currentPlayerId = 1 - state.currentPlayerId;
                 state.turn++;
                 
+                // Grant 1 power to the current player
+                state.players[state.currentPlayerId].currentPower++;
+                addLog(`${state.players[state.currentPlayerId].name}がパワーを1獲得！(合計: ${state.players[state.currentPlayerId].currentPower})`);
+
                 // Check if the new player's turn is skipped
                 const nextPlayer = state.players[state.currentPlayerId];
                 if (nextPlayer.isSkipped) {
@@ -518,8 +632,21 @@
                 el.innerHTML = `
                     <div class="card-name">${card.name}</div>
                     <div class="card-suit">${card.suit}</div>
-                    <div class="card-power">${card.power}</div>
+                    <div class="card-attack">${card.attack}</div>
+                    ${card.type === 'Monster' ? `<div class="card-power-cost">${card.attachedPower}/${card.requiredPower}</div>` : ''}
                 `;
+
+                // Add Attach Power button for player's monster cards on board
+                if (card.type === 'Monster' && type === 'board' && state.players[0].board.includes(card)) {
+                    const attachPowerBtn = document.createElement('button');
+                    attachPowerBtn.className = 'card-power-btn';
+                    attachPowerBtn.textContent = 'Attach Power';
+                    attachPowerBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent card click event from firing
+                        onAttachPowerClick(card);
+                    });
+                    el.appendChild(attachPowerBtn);
+                }
                 
                 // Add event listeners only for player cards that are clickable
                  if (state.players[0].hand.includes(card) || (state.phase === 'main' && state.players[0].board.includes(card))) {
@@ -560,6 +687,13 @@
                         playCardFromHand(state.selectedCard.card, slotIndex);
                     }
                 }
+            }
+
+                     addLog(`${card.name}を選択。配置する空きスロットをクリックしてください。`);
+                }
+            }
+            
+
             }
 
             function onCardClick(e) {
@@ -614,6 +748,7 @@
                 }
             }
 
+
             function playSupportCard(card, playerId) {
                 const player = state.players[playerId];
                 addLog(`${player.name}が${card.name}を使用！`);
@@ -666,6 +801,30 @@
                     G.modalBtn.disabled = false;
                 }
             }
+
+            function onAttachPowerClick(targetCard) {
+                const player = state.players[0];
+
+                if (state.currentPlayerId !== 0 || state.phase !== 'main') {
+                    addLog('パワーをアタッチできません。');
+                    return;
+                }
+
+                if (player.currentPower <= 0) {
+                    addLog('利用可能なパワーがありません。');
+                    return;
+                }
+
+                if (targetCard.attachedPower >= targetCard.requiredPower) {
+                    addLog(`${targetCard.name}はこれ以上パワーをアタッチできません。`);
+                    return;
+                }
+
+                player.currentPower--;
+                targetCard.attachedPower++;
+                addLog(`${targetCard.name}にパワーを1アタッチしました。`);
+                renderAll();
+            }
             
             function selectCard(type, card, index) {
                 // Deselect if clicking the same card
@@ -690,8 +849,17 @@
             }
             
             function performAttack(attacker, defender) {
+                if (attacker.attachedPower < attacker.requiredPower) {
+                    addLog(`${attacker.name}は攻撃に必要なパワーが不足しています。`);
+                    return;
+                }
+
                 addLog(`${attacker.name}が${defender.name}に攻撃！`);
                 
+                // Consume power
+                attacker.attachedPower -= attacker.requiredPower;
+                addLog(`${attacker.name}はパワーを${attacker.requiredPower}消費しました。`);
+
                 // Battle logic
                 if (attacker.attack > defender.power) {
                     addLog(`${defender.name}は倒された。`);
@@ -744,7 +912,7 @@
                 if (player.deck.length > 0) {
                     player.hand.push(player.deck.pop());
                 } else {
-                    addLog(`${player.name}のデッキがなくなりました。`);
+                    addLog(`${player.name}の山札がなくなりました。`);
                 }
             }
             
