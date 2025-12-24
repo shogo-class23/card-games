@@ -715,46 +715,8 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         // Check if the target card is in the front row (slots 0, 1, 2)
         const targetIndex = state.opponent.field.findIndex(c => c && c.id === card.id);
 
-        const opponentFrontRowOccupied = state.opponent.field[0] !== null || state.opponent.field[1] !== null || state.opponent.field[2] !== null;
-
-        if (targetIndex === -1) { // Should not happen if card is clicked
-            addLog('攻撃対象のカードが見つかりません。');
-            return;
-        }
-
-        if (targetIndex >= 3) { // Target is in the back row
-            if (opponentFrontRowOccupied) {
-                addLog('相手の前衛にモンスターがいるため、後衛を攻撃できません。');
-                return;
-            }
-        }
-        // If target is in front row (targetIndex < 3) or back row is empty, proceed.
-        // The original logic `targetIndex === -1 || targetIndex >= 3` was simplified.
-        // Now, we specifically allow front row targets always, and back row targets only if front is empty.
-        
-        // Ensure only front-row targets are allowed, if any front-row card exists
-        if (opponentFrontRowOccupied && targetIndex >= 3) {
-            addLog('相手の前衛にモンスターがいるため、後衛を攻撃できません。');
-            return;
-        }
-
-        // If no front-row cards, allow attacking any available card
-        if (!opponentFrontRowOccupied && targetIndex >= 3) {
-            // This is allowed: attacking back row when front is empty
-        } else if (targetIndex >= 3) { // If front row is not empty, and target is back row, this branch is unreachable due to above checks.
-            addLog('相手の前衛のモンスターカードが優先されます。'); // Fallback, though likely unreachable
-            return;
-        }
-        
-        // Remove redundant front row check from here, as the logic above covers it.
-        // It's already filtered for "targetIndex >=3" but we still need to filter for front row target
-        if (targetIndex >=3 && opponentFrontRowOccupied){
-            addLog('相手の前衛にモンスターがいるため、後衛を攻撃できません。');
-            return;
-        }
-
-        // --- Simplified and corrected logic ---
-        const isTargetInOpponentFrontRow = targetIndex < 3;
+        const opponentFrontRowOccupied = state.opponent.field[3] !== null || state.opponent.field[4] !== null || state.opponent.field[5] !== null;
+        const isTargetInOpponentFrontRow = targetIndex >= 3; // Front row for opponent (from player's perspective) are indices 3,4,5
         if (!isTargetInOpponentFrontRow && opponentFrontRowOccupied) {
             addLog('相手の前衛にモンスターがいるため、後衛を攻撃できません。');
             return;
@@ -910,7 +872,8 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             const currentDisplayedSlotNumber = displayedSlotNumbers[playerType][index];
 
             if (card) {
-                const cardEl = createCardElement(card, playerType); // Pass playerType here
+                const isOpponentCardFaceDown = (playerType === 'opponent' && !state.gameStarted);
+                const cardEl = createCardElement(card, playerType, isOpponentCardFaceDown); // Pass playerType and isFaceDown
                 cardEl.style.order = currentSlotOrder + ' !important'; // Apply order to card
                 if (playerType === 'player') {
                     cardEl.addEventListener('click', () => onPlayerFieldCardClick(card, cardEl)); // Player's own field cards
@@ -1183,15 +1146,15 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         }
 
         let placedCount = 0;
-        // Prioritize placing in front row (slots 0, 1, 2)
-        for (let slotIndex = 0; slotIndex < 3 && placedCount < 3; slotIndex++) {
+        // Prioritize placing in front row (slots 3, 4, 5 for opponent's perspective of front)
+        for (let slotIndex = 3; slotIndex < 6 && placedCount < 3; slotIndex++) {
             if (state.opponent.field[slotIndex] === null && opponentMonstersToPlace.length > 0) {
                 state.opponent.field[slotIndex] = opponentMonstersToPlace.shift();
                 placedCount++;
             }
         }
-        // Fill remaining slots in back row (3, 4, 5) if any monsters left to place
-        for (let slotIndex = 3; slotIndex < 6 && placedCount < 3; slotIndex++) {
+        // Fill remaining slots in back row (0, 1, 2) if any monsters left to place
+        for (let slotIndex = 0; slotIndex < 3 && placedCount < 3; slotIndex++) {
             if (state.opponent.field[slotIndex] === null && opponentMonstersToPlace.length > 0) {
                 state.opponent.field[slotIndex] = opponentMonstersToPlace.shift();
                 placedCount++;
