@@ -452,10 +452,12 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     }
     
     function onPlayerCardClick(card, cardEl) { // Renamed from onHandCardClick
-        if (!state.gameStarted || state.turn !== 'player') {
-            addLog('ゲームが開始していないか、相手の番です。');
+        if (state.gameStarted && state.turn !== 'player') { // Only prevent actions if game started AND not player's turn
+            addLog('相手の番です。');
             return;
         }
+        // If game not started (placement phase), or if it's player's turn (attack/action phase)
+        // allow card selection logic to proceed.
 
         const actionPanel = document.getElementById('action-panel');
         const attackingCardInfo = document.getElementById('attacking-card-info');
