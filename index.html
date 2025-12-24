@@ -298,24 +298,7 @@
             border-radius: 3px;
         }
 
-        /* Attach Power Button */
-        .attach-power-btn {
-            position: absolute;
-            bottom: 5px;
-            right: 5px;
-            background-color: #007bff; /* Blue color */
-            color: white;
-            border: none;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-size: 9px;
-            cursor: pointer;
-            z-index: 10;
-        }
 
-        .attach-power-btn:hover {
-            background-color: #0056b3;
-        }
 
         /* Log Area */
         .log-area {
@@ -374,13 +357,13 @@
     <!-- Center Area -->
     <div class="center-area">
         <div id="opponent-score" class="score">0</div>
-        <div class="center-controls">
-            <button id="placement-ok-button" class="game-button">配置OK</button>
-            <button id="end-turn-button" class="game-button" style="display:none;">ターン終了</button>
-            <div id="current-turn-display" class="turn-display"></div>
-            <div id="card-use-message" class="card-message"></div>
-        </div>
-        <div id="player-score" class="score">0</div>
+                    <div class="center-controls">
+                        <button id="placement-ok-button" class="game-button">配置OK</button>
+                        <button id="central-power-button" class="game-button" style="display:none;">パワー</button>
+                        <button id="end-turn-button" class="game-button" style="display:none;">ターン終了</button>
+                        <div id="current-turn-display" class="turn-display"></div>
+                        <div id="card-use-message" class="card-message"></div>
+                    </div>        <div id="player-score" class="score">0</div>
     </div>
 
     <!-- Player's Area -->
@@ -566,17 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
                     <span class="power-cost-display">${card.attachedPower}/${card.requiredPower}</span>
                 </div>
             `;
-            // Add Attach Power button for player's monster cards on field
-            if (playerType === 'player') { // assuming playerType is passed or accessible
-                 const attachPowerBtn = document.createElement('button');
-                 attachPowerBtn.className = 'attach-power-btn';
-                 attachPowerBtn.textContent = 'Power';
-                 attachPowerBtn.addEventListener('click', (e) => {
-                     e.stopPropagation(); // Prevent card click event from firing
-                     onAttachPowerButtonClick(card);
-                 });
-                 cardEl.appendChild(attachPowerBtn);
-            }
+
         }
         return cardEl;
     }
@@ -1073,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         return newField;
     }
 
-    function setupInitialState() {
+    const setupInitialState = () => {
         addLog("メインフェーズに移行 (準備)");
         
         state.player.hand = [
@@ -1089,10 +1062,11 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         
         updateTurnDisplay(); // Set initial '配置準備中' text
         render();
-    }
+    };
 
     const placementOkButton = document.getElementById('placement-ok-button');
     const endTurnButton = document.getElementById('end-turn-button');
+    const centralPowerButton = document.getElementById('central-power-button'); // Get central power button
 
     placementOkButton.disabled = true; // Initially disabled
 
@@ -1104,6 +1078,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         }
 
         placementOkButton.style.display = 'none';
+        centralPowerButton.style.display = 'block'; // Show central power button after placement
 
         // Opponent places 3 monsters
         const opponentDeck = createDeck();
@@ -1131,8 +1106,43 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     endTurnButton.addEventListener('click', () => {
         if (state.gameStarted && state.turn === 'player') {
             endTurnButton.style.display = 'none'; // Hide button immediately
+            centralPowerButton.style.display = 'none'; // Hide central power button on turn end
             endTurn();
         }
+    });
+
+    centralPowerButton.addEventListener('click', () => {
+        if (!state.gameStarted || state.turn !== 'player') {
+            addLog('パワーをアタッチできません。ゲームが開始されていないか、相手の番です。');
+            return;
+        }
+
+        if (!state.selectedCard) {
+            addLog('パワーをアタッチするカードを選択してください。');
+            return;
+        }
+
+        const targetCard = state.selectedCard;
+
+        if (targetCard.type !== 'monster' || !state.player.field.includes(targetCard)) {
+            addLog('フィールド上のモンスターカードにのみパワーをアタッチできます。');
+            return;
+        }
+
+        if (state.player.currentPower <= 0) {
+            addLog('利用可能なパワーがありません。');
+            return;
+        }
+
+        if (targetCard.attachedPower >= targetCard.requiredPower) {
+            addLog(`${targetCard.suit} ${targetCard.rank} はこれ以上パワーをアタッチできません。`);
+            return;
+        }
+
+        state.player.currentPower--;
+        targetCard.attachedPower++;
+        addLog(`${targetCard.suit} ${targetCard.rank} にパワーを1アタッチしました。残りのパワー: ${state.player.currentPower}`);
+        render(); // Re-render to reflect changes
     });
 
     // Attack Action Panel Event Listeners

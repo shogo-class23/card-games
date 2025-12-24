@@ -258,22 +258,7 @@
         }
         .log-area p { margin: 0 0 5px 0; }
         
-        .card-power-btn {
-            background-color: var(--support-color);
-            color: var(--text-light);
-            border: none;
-            padding: 5px 8px;
-            border-radius: 5px;
-            font-size: 10px;
-            cursor: pointer;
-            margin-top: 5px;
-            width: 80%;
-            display: none; /* Hidden by default, shown for player's board monsters */
-        }
-        
-        .card-power-btn:hover {
-            opacity: 0.8;
-        }
+
 
         .card.can-be-targeted {
             box-shadow: 0 0 15px yellow;
@@ -297,6 +282,7 @@
                 <div class="graveyard-pile" id="opponent-graveyard">0</div>
             </div>
             <button id="end-turn-btn">Turn End</button>
+            <button id="central-power-button" class="game-button" style="display:none;">パワー</button>
             <div class="info-pile">
                 <div class="graveyard-pile" id="player-graveyard">0</div>
                 <div class="deck-pile" id="player-deck">30</div>
@@ -353,6 +339,7 @@
                     score: document.getElementById('opponent-score')
                 },
                 endTurnBtn: document.getElementById('end-turn-btn'),
+                centralPowerBtn: document.getElementById('central-power-button'), // Reference to the central power button
                 modal: document.getElementById('game-modal'),
                 modalTitle: document.getElementById('modal-title'),
                 modalText: document.getElementById('modal-text'),
@@ -465,6 +452,7 @@
                 G.modalText.textContent = '手札からモンスターをバトル場に配置してください。';
                 G.modalBtn.textContent = '配置完了＆ゲーム開始';
                 G.modalBtn.disabled = true; // Disabled until at least one monster is placed
+                G.centralPowerBtn.style.display = 'none'; // Hide central power button initially
                 
                 addLog('初期化完了。配置フェーズに移行します。');
                 renderAll();
@@ -507,6 +495,7 @@
                 renderAll();
                 
                 G.endTurnBtn.disabled = state.currentPlayerId === 1;
+                G.centralPowerBtn.style.display = state.currentPlayerId === 0 ? 'block' : 'none'; // Show if player is first
                 
                 if (state.currentPlayerId === 1) {
                     setTimeout(runAITurn, 1000);
@@ -549,9 +538,11 @@
                 
                 if (state.currentPlayerId === 1) { // AI's turn
                     G.endTurnBtn.disabled = true;
+                    G.centralPowerBtn.style.display = 'none'; // Hide central power button for AI
                     setTimeout(runAITurn, 1000);
                 } else {
                     G.endTurnBtn.disabled = false;
+                    G.centralPowerBtn.style.display = 'block'; // Show central power button for player
                 }
             }
 
@@ -636,17 +627,7 @@
                     ${card.type === 'Monster' ? `<div class="card-power-cost">${card.attachedPower}/${card.requiredPower}</div>` : ''}
                 `;
 
-                // Add Attach Power button for player's monster cards on board
-                if (card.type === 'Monster' && type === 'board' && state.players[0].board.includes(card)) {
-                    const attachPowerBtn = document.createElement('button');
-                    attachPowerBtn.className = 'card-power-btn';
-                    attachPowerBtn.textContent = 'Attach Power';
-                    attachPowerBtn.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Prevent card click event from firing
-                        onAttachPowerClick(card);
-                    });
-                    el.appendChild(attachPowerBtn);
-                }
+
                 
                 // Add event listeners only for player cards that are clickable
                  if (state.players[0].hand.includes(card) || (state.phase === 'main' && state.players[0].board.includes(card))) {
@@ -953,6 +934,7 @@
             function endGame(winner, reason) {
                 state.phase = 'gameover';
                 G.endTurnBtn.disabled = true;
+                G.centralPowerBtn.style.display = 'none'; // Hide central power button on game over
                 
                 let title, text;
                 if (winner === 'draw') {
@@ -1034,6 +1016,17 @@
             // --- Event Listeners ---
             G.modalBtn.addEventListener('click', handlePlacementDone);
             G.endTurnBtn.addEventListener('click', endTurn);
+            G.centralPowerBtn.addEventListener('click', () => {
+                if (state.currentPlayerId !== 0 || state.phase !== 'main') {
+                    addLog('パワーをアタッチできません。');
+                    return;
+                }
+                if (!state.selectedCard.card || state.selectedCard.type !== 'board' || state.selectedCard.card.type !== 'Monster' || !state.players[0].board.includes(state.selectedCard.card)) {
+                    addLog('フィールド上のモンスターカードを選択してください。');
+                    return;
+                }
+                onAttachPowerClick(state.selectedCard.card);
+            });
 
             // --- Game Start ---
             initGame();
