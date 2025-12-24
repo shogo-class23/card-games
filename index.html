@@ -366,13 +366,15 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     const RANK_VALUES = { 'A': 14, 'K': 13, 'Q': 12, 'J': 11, '9': 9, '8': 8, '6': 6, '4': 4, '3': 3 };
 
     class Card {
-        constructor(suit, rank) {
+        constructor(suit, rank, type = 'monster', effect = null) {
             this.id = `${suit}-${rank}-${Math.random()}`;
             this.suit = suit;
             this.rank = rank;
             this.value = RANK_VALUES[rank];
             this.hp = this.value;
             this.maxHp = this.value;
+            this.type = type; // 'monster' or 'support'
+            this.effect = effect; // For support cards, e.g., 'skip_turn', 'draw_2', 'heal_2'
         }
     }
 
@@ -392,6 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             graveyard: [],
             deckCount: 18,
             totalDeck: 30,
+            skipNextTurn: false, // New property for skip card effect
         },
         selectedCard: null,
         gameStarted: false,
@@ -403,12 +406,40 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
 
     function createDeck() {
         const deck = [];
-        // A full deck would be 30 cards, but for this demo, we just create some examples.
+        const supportCards = [
+            { suit: 'none', rank: 'Skip', type: 'support', effect: 'skip_turn' },
+            { suit: 'none', rank: 'Draw2', type: 'support', effect: 'draw_2' },
+            { suit: 'none', rank: 'Heal2', type: 'support', effect: 'heal_2' },
+        ];
+
         for (let i = 0; i < 30; i++) {
+            if (Math.random() < 0.15) { // Approximately 15% chance for a support card
+                const supportCardData = supportCards[Math.floor(Math.random() * supportCards.length)];
+                deck.push(new Card(supportCardData.suit, supportCardData.rank, supportCardData.type, supportCardData.effect));
+            } else {
+                const suit = SUITS[Math.floor(Math.random() * SUITS.length)];
+                const rank = RANKS[Math.floor(Math.random() * RANKS.length)];
+                deck.push(new Card(suit, rank));
+            }
+        }
+        // Ensure there are at least some monster cards if random was too low
+        while (deck.filter(c => c.type === 'monster').length < 20 && deck.length < 30) {
             const suit = SUITS[Math.floor(Math.random() * SUITS.length)];
             const rank = RANKS[Math.floor(Math.random() * RANKS.length)];
             deck.push(new Card(suit, rank));
         }
+        while (deck.length < 30) { // Fill up to 30 if needed
+            const suit = SUITS[Math.floor(Math.random() * SUITS.length)];
+            const rank = RANKS[Math.floor(Math.random() * RANKS.length)];
+            deck.push(new Card(suit, rank));
+        }
+
+        // Shuffle the deck (Fisher-Yates)
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+
         return deck;
     }
 
@@ -490,7 +521,50 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             return;
         }
 
-        // --- Attack/Action Phase Logic ---
+        // --- Support Card Usage or Attack/Action Phase Logic ---
+        if (card.type === 'support') {
+            addLog(`サポートカード ${card.rank} を使用しました！`);
+            // Remove card from hand
+            state.player.hand = state.player.hand.filter(c => c.id !== card.id);
+            state.player.graveyard.push(card); // Move used support card to graveyard
+
+            switch (card.effect) {
+                case 'skip_turn':
+                    state.opponent.skipNextTurn = true;
+                    addLog('相手の次のターンをスキップします。');
+                    break;
+                case 'draw_2':
+                    for (let i = 0; i < 2; i++) {
+                        if (state.player.deck.length > 0) {
+                            const drawnCard = state.player.deck.shift();
+                            state.player.hand.push(drawnCard);
+                            state.player.deckCount--;
+                            addLog(`山札から ${drawnCard.suit} ${drawnCard.rank} を引きました。`);
+                        } else {
+                            addLog('山札がありません。追加ドローできませんでした。');
+                            break;
+                        }
+                    }
+                    break;
+                case 'heal_2':
+                    // Need to select a target card on field to heal
+                    // For now, randomly heal one of player's field cards
+                    const playerFieldCards = state.player.field.filter(c => c !== null);
+                    if (playerFieldCards.length > 0) {
+                        const cardToHeal = playerFieldCards[Math.floor(Math.random() * playerFieldCards.length)];
+                        cardToHeal.hp = Math.min(cardToHeal.maxHp, cardToHeal.hp + 2);
+                        addLog(`${cardToHeal.suit} ${cardToHeal.rank} のHPを2回復しました。現在HP: ${cardToHeal.hp}/${cardToHeal.maxHp}`);
+                    } else {
+                        addLog('回復するフィールドカードがありません。');
+                    }
+                    break;
+            }
+            state.selectedCard = null; // Deselect after use
+            render(); // Update UI after support card effect
+            return; // Support card used, skip attack logic
+        }
+
+        // --- Attack/Action Phase Logic for Monster Cards ---
         const actionPanel = document.getElementById('action-panel');
         const attackingCardInfo = document.getElementById('attacking-card-info');
 
@@ -612,10 +686,13 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     }
 
     function onSlotClick(index) {
-        if (state.gameStarted) {
-            addLog('ゲーム開始後は配置できません。');
+        // Allow placement during setup phase OR during player's turn if game started
+        if (state.gameStarted && state.turn !== 'player') {
+            addLog('相手の番には配置できません。');
             return;
         }
+        // If game started, it must be player's turn. If not started, it's placement phase.
+
         if (!state.selectedCard) {
             addLog('先に手札から配置するカードを選択してください。');
             return;
@@ -632,7 +709,10 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         state.selectedCard = null;
 
         addLog(`「${cardToPlace.suit} ${cardToPlace.rank}」をフィールドに配置しました。`);
-        placementOkButton.disabled = false; // Enable button once a card is placed
+        // Placement OK button is only relevant during setup phase
+        if (!state.gameStarted) {
+            placementOkButton.disabled = false;
+        }
         render();
     }
 
@@ -696,6 +776,28 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         state.turn = player;
         state.turnCount++;
         addLog(`ターン ${state.turnCount}: ${player === 'player' ? 'あなたの番' : '相手の番'}`);
+        
+        if (player === 'player') {
+            // Player draws a card at the start of their turn
+            if (state.player.deck.length > 0) {
+                const drawnCard = state.player.deck.shift(); // Remove from top of deck
+                state.player.hand.push(drawnCard); // Add to hand
+                state.player.deckCount--;
+                addLog(`山札から ${drawnCard.suit} ${drawnCard.rank} を引きました。`);
+            } else {
+                addLog('山札がありません。カードを引けませんでした。');
+            }
+        }
+
+        // Check for Skip Turn effect
+        if (player === 'opponent' && state.opponent.skipNextTurn) {
+            addLog('相手のターンはスキップされます！');
+            state.opponent.skipNextTurn = false; // Reset flag
+            // Immediately end opponent's turn and start player's turn again
+            endTurn(); // This will call startTurn('player')
+            return;
+        }
+
         updateTurnDisplay();
         render(); // Ensure UI reflects current turn
         if (player === 'opponent') {
