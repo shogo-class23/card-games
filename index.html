@@ -688,7 +688,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         }
 
         // Always show the central power button if a player's monster on field is selected and it's player's turn
-        if (state.selectedCard && state.selectedCard.type === 'monster' && state.player.field.includes(state.selectedCard) && state.turn === 'player') {
+        if (state.gameStarted && state.turn === 'player' && state.selectedCard && state.selectedCard.type === 'monster' && state.player.field.includes(state.selectedCard)) {
             attachPowerCentralButton.style.display = 'block';
         } else {
             attachPowerCentralButton.style.display = 'none';
@@ -714,10 +714,53 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         }
         // Check if the target card is in the front row (slots 0, 1, 2)
         const targetIndex = state.opponent.field.findIndex(c => c && c.id === card.id);
-        if (targetIndex === -1 || targetIndex >= 3) { // Front row slots are 0, 1, 2
-            addLog('相手の前衛のモンスターカードのみ攻撃対象にできます。');
+
+        const opponentFrontRowOccupied = state.opponent.field[0] !== null || state.opponent.field[1] !== null || state.opponent.field[2] !== null;
+
+        if (targetIndex === -1) { // Should not happen if card is clicked
+            addLog('攻撃対象のカードが見つかりません。');
             return;
         }
+
+        if (targetIndex >= 3) { // Target is in the back row
+            if (opponentFrontRowOccupied) {
+                addLog('相手の前衛にモンスターがいるため、後衛を攻撃できません。');
+                return;
+            }
+        }
+        // If target is in front row (targetIndex < 3) or back row is empty, proceed.
+        // The original logic `targetIndex === -1 || targetIndex >= 3` was simplified.
+        // Now, we specifically allow front row targets always, and back row targets only if front is empty.
+        
+        // Ensure only front-row targets are allowed, if any front-row card exists
+        if (opponentFrontRowOccupied && targetIndex >= 3) {
+            addLog('相手の前衛にモンスターがいるため、後衛を攻撃できません。');
+            return;
+        }
+
+        // If no front-row cards, allow attacking any available card
+        if (!opponentFrontRowOccupied && targetIndex >= 3) {
+            // This is allowed: attacking back row when front is empty
+        } else if (targetIndex >= 3) { // If front row is not empty, and target is back row, this branch is unreachable due to above checks.
+            addLog('相手の前衛のモンスターカードが優先されます。'); // Fallback, though likely unreachable
+            return;
+        }
+        
+        // Remove redundant front row check from here, as the logic above covers it.
+        // It's already filtered for "targetIndex >=3" but we still need to filter for front row target
+        if (targetIndex >=3 && opponentFrontRowOccupied){
+            addLog('相手の前衛にモンスターがいるため、後衛を攻撃できません。');
+            return;
+        }
+
+        // --- Simplified and corrected logic ---
+        const isTargetInOpponentFrontRow = targetIndex < 3;
+        if (!isTargetInOpponentFrontRow && opponentFrontRowOccupied) {
+            addLog('相手の前衛にモンスターがいるため、後衛を攻撃できません。');
+            return;
+        }
+        // At this point, if we are here, target is either in front row, or in back row with empty front row.
+        // This is the correct logic for selection.
 
         const attackingCard = state.player.field.flat().find(c => c && c.id === state.attackingCardId);
         if (!attackingCard) {
@@ -1117,21 +1160,44 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
 
         placementOkButton.style.display = 'none';
 
-        // Opponent places 3 monsters from their deck
-        for (let i = 0; i < 3; i++) {
-            if (state.opponent.deck.length > 0) {
-                let randomSlot;
-                do {
-                    randomSlot = Math.floor(Math.random() * 6);
-                } while (state.opponent.field[randomSlot] !== null);
-                state.opponent.field[randomSlot] = state.opponent.deck.shift(); // Place from deck
-                state.opponent.deckCount--;
-            } else {
-                addLog('相手の山札が足りず、モンスターを配置できませんでした。');
-                break;
+        // Opponent places 3 monsters
+        const opponentMonstersToPlace = [];
+        // First, try to pick 3 monster cards from hand, prioritizing them
+        for (let i = 0; i < state.opponent.hand.length && opponentMonstersToPlace.length < 3; i++) {
+            if (state.opponent.hand[i].type === 'monster') {
+                opponentMonstersToPlace.push(state.opponent.hand[i]);
+                state.opponent.hand.splice(i, 1); // Remove from hand
+                i--; // Adjust index due to removal
             }
         }
-        addLog("相手が3体のモンスターを配置");
+        // If not enough monsters from hand, take from deck
+        while (opponentMonstersToPlace.length < 3 && state.opponent.deck.length > 0) {
+            const cardFromDeck = state.opponent.deck.shift();
+            state.opponent.deckCount--;
+            if (cardFromDeck.type === 'monster') {
+                opponentMonstersToPlace.push(cardFromDeck);
+            } else {
+                state.opponent.graveyard.push(cardFromDeck); // Discard non-monster if needed for placement
+                addLog('相手が山札からサポートカードを引きましたが、配置しないため墓地へ送られました。');
+            }
+        }
+
+        let placedCount = 0;
+        // Prioritize placing in front row (slots 0, 1, 2)
+        for (let slotIndex = 0; slotIndex < 3 && placedCount < 3; slotIndex++) {
+            if (state.opponent.field[slotIndex] === null && opponentMonstersToPlace.length > 0) {
+                state.opponent.field[slotIndex] = opponentMonstersToPlace.shift();
+                placedCount++;
+            }
+        }
+        // Fill remaining slots in back row (3, 4, 5) if any monsters left to place
+        for (let slotIndex = 3; slotIndex < 6 && placedCount < 3; slotIndex++) {
+            if (state.opponent.field[slotIndex] === null && opponentMonstersToPlace.length > 0) {
+                state.opponent.field[slotIndex] = opponentMonstersToPlace.shift();
+                placedCount++;
+            }
+        }
+        addLog(`相手が${placedCount}体のモンスターを配置`);
         addLog("プレイヤーの配置完了");
         
         // Ensure both decks are shuffled right before the match starts
