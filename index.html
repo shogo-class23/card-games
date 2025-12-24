@@ -597,6 +597,12 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             addLog('フィールドのモンスターカードのみ攻撃を選択できます。');
             return;
         }
+        // Check if the card is in the front row (slots 0, 1, 2)
+        const cardIndex = state.player.field.findIndex(c => c && c.id === card.id);
+        if (cardIndex === -1 || cardIndex >= 3) { // Front row slots are 0, 1, 2
+            addLog('前衛のモンスターカードのみ攻撃を選択できます。');
+            return;
+        }
 
         const actionPanel = document.getElementById('action-panel');
         const attackingCardInfo = document.getElementById('attacking-card-info');
@@ -625,6 +631,12 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         }
         if (state.attackCountThisTurn >= 3) {
             addLog('今ターンはこれ以上攻撃できません。');
+            return;
+        }
+        // Check if the target card is in the front row (slots 0, 1, 2)
+        const targetIndex = state.opponent.field.findIndex(c => c && c.id === card.id);
+        if (targetIndex === -1 || targetIndex >= 3) { // Front row slots are 0, 1, 2
+            addLog('相手の前衛のモンスターカードのみ攻撃対象にできます。');
             return;
         }
 
@@ -778,20 +790,20 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
                 return;
             }
 
-            // Find an opponent card to attack with
-            const availableOpponentCards = state.opponent.field.filter(c => c !== null);
+            // Find an opponent card to attack with from the front row
+            const availableOpponentCards = state.opponent.field.slice(0, 3).filter(c => c !== null); // Front row only
             if (availableOpponentCards.length === 0) {
-                addLog("相手のフィールドに攻撃可能なカードがありません。");
+                addLog("相手のフィールド前衛に攻撃可能なカードがありません。");
                 addLog("相手がターンを終了しました。");
                 endTurn();
                 return;
             }
             const attackingOpponentCard = availableOpponentCards[Math.floor(Math.random() * availableOpponentCards.length)];
 
-            // Find a player card to attack
-            const availablePlayerCards = state.player.field.filter(c => c !== null);
+            // Find a player card to attack from the front row
+            const availablePlayerCards = state.player.field.slice(0, 3).filter(c => c !== null); // Front row only
             if (availablePlayerCards.length === 0) {
-                addLog("プレイヤーのフィールドにカードがありません。");
+                addLog("プレイヤーのフィールド前衛にカードがありません。");
                 addLog("相手がターンを終了しました。");
                 endTurn();
                 return;
