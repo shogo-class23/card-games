@@ -114,6 +114,21 @@
             align-items: center;
             gap: 10px;
         }
+        #action-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 10px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        #action-panel h4 {
+            margin: 0;
+            color: white;
+            font-size: 16px;
+        }
         .game-button {
             padding: 10px 20px;
             font-size: 18px;
@@ -322,9 +337,15 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const SUITS = ['fire', 'water', 'wind', 'earth'];
+    <div id="action-panel" style="display:none;">
+        <h4 id="attacking-card-info"></h4>
+        <button id="attack-button" class="game-button">攻撃</button>
+        <button id="special-attack-button" class="game-button" disabled>特別技 (選択不可)</button>
+        <button id="cancel-attack-button" class="game-button">キャンセル</button>
+    </div>
+
+    <script>
+document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 'water', 'wind', 'earth'];
     const RANKS = ['A', 'K', 'Q', 'J', '9', '8', '6', '4', '3'];
     const RANK_VALUES = { 'A': 14, 'K': 13, 'Q': 12, 'J': 11, '9': 9, '8': 8, '6': 6, '4': 4, '3': 3 };
 
@@ -360,6 +381,8 @@ document.addEventListener('DOMContentLoaded', () => {
         gameStarted: false,
         turn: null, // Track current player: 'player' or 'opponent'
         turnCount: 0, // Track the number of turns
+        attackingCardId: null, // ID of the card currently selected to attack
+        attackCountThisTurn: 0, // Number of attacks made this turn
     };
 
     function createDeck() {
@@ -428,34 +451,115 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    function onPlayerCardClick(card, cardEl) { // Renamed from onHandCardClick
+        if (!state.gameStarted || state.turn !== 'player') {
+            addLog('ゲームが開始していないか、相手の番です。');
+            return;
+        }
+
+        const actionPanel = document.getElementById('action-panel');
+        const attackingCardInfo = document.getElementById('attacking-card-info');
+
+        // If a card is already selected for attack, clicking another player card
+        // deselects the current attacking card and selects the new one.
+        if (state.attackingCardId) {
+            const prevAttackingCardEl = document.querySelector(`.card[data-card-id="${state.attackingCardId}"]`);
+            if (prevAttackingCardEl) prevAttackingCardEl.classList.remove('selected-attack');
+            if (state.attackingCardId === card.id) { // Clicked the same attacking card
+                state.attackingCardId = null;
+                actionPanel.style.display = 'none';
+                return;
+            }
+        }
+        
+        state.attackingCardId = card.id;
+        cardEl.classList.add('selected-attack');
+        attackingCardInfo.textContent = `選択中のカード: ${card.suit} ${card.rank} (攻撃力: ${card.value})`;
+        actionPanel.style.display = 'flex';
+        addLog(`自分のカード ${card.suit} ${card.rank} を選択しました。攻撃対象を選んでください。`);
+    }
+
+    function onOpponentFieldCardClick(card, cardEl) {
+        if (!state.attackingCardId) {
+            addLog('まず自分のカードを選択してください。');
+            return;
+        }
+        if (state.attackCountThisTurn >= 3) {
+            addLog('今ターンはこれ以上攻撃できません。');
+            return;
+        }
+
+        const attackingCard = state.player.field.flat().find(c => c && c.id === state.attackingCardId);
+        if (!attackingCard) {
+            addLog('選択中の攻撃カードが見つかりません。');
+            return;
+        }
+
+        // Only front row cards can attack/be attacked (simplified for now as all field cards can attack/be attacked)
+        // More sophisticated logic would check card position in field[0-2] for front row
+
+        addLog(`${attackingCard.suit} ${attackingCard.rank} が ${card.suit} ${card.rank} を攻撃！`);
+        addLog(`${card.suit} ${card.rank} のHPが ${attackingCard.value} 減少！`);
+
+        card.hp -= attackingCard.value;
+        state.attackCountThisTurn++;
+        
+        // Check if opponent card is destroyed
+        if (card.hp <= 0) {
+            addLog(`${card.suit} ${card.rank} は破壊され、墓地へ送られました。`);
+            state.opponent.graveyard.push(card);
+            // Remove card from field
+            const indexInField = state.opponent.field.findIndex(c => c && c.id === card.id);
+            if (indexInField !== -1) {
+                state.opponent.field[indexInField] = null;
+            }
+        } else {
+            addLog(`${card.suit} ${card.rank} の残りHP: ${card.hp}/${card.maxHp}`);
+        }
+
+        // Deselect attacking card and hide action panel
+        const prevAttackingCardEl = document.querySelector(`.card[data-card-id="${state.attackingCardId}"]`);
+        if (prevAttackingCardEl) prevAttackingCardEl.classList.remove('selected-attack');
+        state.attackingCardId = null;
+        document.getElementById('action-panel').style.display = 'none';
+
+        render(); // Re-render to reflect changes
+    }
+
     function render() {
         // Render Player Hand
         const playerHandEl = document.getElementById('player-hand');
         playerHandEl.innerHTML = '';
         state.player.hand.forEach(card => {
             const cardEl = createCardElement(card);
-            cardEl.addEventListener('click', () => onHandCardClick(card, cardEl));
+            cardEl.addEventListener('click', () => onPlayerCardClick(card, cardEl));
             playerHandEl.appendChild(cardEl);
         });
 
         // Render Fields
-        renderField('player-field', state.player.field);
-        renderField('opponent-field', state.opponent.field);
+        renderField('player-field', state.player.field, 'player');
+        renderField('opponent-field', state.opponent.field, 'opponent');
 
         // Update Info Panels (static as per requirement)
         document.querySelector('#player-deck .deck-label').textContent = `デッキ: ${state.player.deckCount}/${state.player.totalDeck}`;
         document.querySelector('#player-graveyard .graveyard-label').textContent = `墓地: ${state.player.graveyard.length}`;
         document.querySelector('#opponent-deck .deck-label').textContent = `デッキ: ${state.opponent.deckCount}/${state.opponent.totalDeck}`;
         document.querySelector('#opponent-graveyard .graveyard-label').textContent = `墓地: ${state.opponent.graveyard.length}`;
+        
         updateTurnDisplay(); // Update turn display on render
     }
 
-    function renderField(fieldId, fieldCards) {
+    function renderField(fieldId, fieldCards, playerType) { // Added playerType parameter
         const fieldEl = document.getElementById(fieldId);
         fieldEl.innerHTML = '';
         fieldCards.forEach((card, index) => {
             if (card) {
                 const cardEl = createCardElement(card);
+                if (playerType === 'player') {
+                    cardEl.addEventListener('click', () => onPlayerCardClick(card, cardEl)); // Player's own field cards
+                } else { // Opponent's field cards
+                    cardEl.addEventListener('click', () => onOpponentFieldCardClick(card, cardEl));
+                }
                 fieldEl.appendChild(cardEl);
             } else {
                 const slotEl = document.createElement('div');
@@ -467,24 +571,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 fieldEl.appendChild(slotEl);
             }
         });
-    }
-
-    function onHandCardClick(card, cardEl) {
-        if (state.gameStarted && state.turn !== 'player') {
-            addLog('相手の番です。');
-            return;
-        }
-        if (state.selectedCard && state.selectedCard.id === card.id) {
-            state.selectedCard = null;
-            cardEl.classList.remove('selected');
-        } else {
-            const prevSelected = document.querySelector('.card.selected');
-            if (prevSelected) prevSelected.classList.remove('selected');
-            
-            state.selectedCard = card;
-            cardEl.classList.add('selected');
-            addLog(`カード「${card.suit} ${card.rank}」を選択しました。配置する場所を選んでください。`);
-        }
     }
 
     function onSlotClick(index) {
@@ -534,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function endTurn() {
+        state.attackCountThisTurn = 0; // Reset attack count for the new turn
         const nextPlayer = state.turn === 'player' ? 'opponent' : 'player';
         startTurn(nextPlayer);
     }
@@ -592,6 +679,30 @@ document.addEventListener('DOMContentLoaded', () => {
             endTurnButton.style.display = 'none'; // Hide button immediately
             endTurn();
         }
+    });
+
+    // Attack Action Panel Event Listeners
+    const attackButton = document.getElementById('attack-button');
+    const specialAttackButton = document.getElementById('special-attack-button');
+    const cancelAttackButton = document.getElementById('cancel-attack-button');
+    const actionPanel = document.getElementById('action-panel');
+
+    attackButton.addEventListener('click', () => {
+        // Attack logic will be triggered by clicking opponent's card after selecting attacker
+        addLog('攻撃対象の相手カードを選択してください。');
+    });
+
+    specialAttackButton.addEventListener('click', () => {
+        addLog('このカードは特別技が選択できません。');
+    });
+
+    cancelAttackButton.addEventListener('click', () => {
+        // Deselect attacking card
+        const prevAttackingCardEl = document.querySelector(`.card[data-card-id="${state.attackingCardId}"]`);
+        if (prevAttackingCardEl) prevAttackingCardEl.classList.remove('selected-attack');
+        state.attackingCardId = null;
+        actionPanel.style.display = 'none';
+        addLog('攻撃をキャンセルしました。');
     });
 
     setupInitialState();
