@@ -724,8 +724,8 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         fieldEl.innerHTML = '';
 
         const slotOrderMap = {
-            'player': [1, 2, 3, 6, 5, 4], // index 0->1, 1->2, 2->3, 3->6, 4->5, 5->4
-            'opponent': [1, 2, 3, 4, 5, 6] // index 0->1, 1->2, 2->3, 3->4, 4->5, 5->6 (visual representation for opponent's field)
+            'player': [0, 1, 2, 3, 4, 5], // Internal array index to grid order (0=top-left, 5=bottom-right for the requested layout)
+            'opponent': [0, 1, 2, 3, 4, 5] // Internal array index to grid order (0=top-left, 5=bottom-right for the requested layout)
         };
         const displayedSlotNumbers = {
             'player': [1, 2, 3, 6, 5, 4],
