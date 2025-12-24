@@ -722,9 +722,23 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     function renderField(fieldId, fieldCards, playerType) { // Added playerType parameter
         const fieldEl = document.getElementById(fieldId);
         fieldEl.innerHTML = '';
+
+        const slotOrderMap = {
+            'player': [1, 2, 3, 6, 5, 4], // index 0->1, 1->2, 2->3, 3->6, 4->5, 5->4
+            'opponent': [1, 2, 3, 4, 5, 6] // index 0->1, 1->2, 2->3, 3->4, 4->5, 5->6 (visual representation for opponent's field)
+        };
+        const displayedSlotNumbers = {
+            'player': [1, 2, 3, 6, 5, 4],
+            'opponent': [1, 2, 3, 4, 5, 6] // Visual slot numbers for opponent's field
+        };
+
         fieldCards.forEach((card, index) => {
+            const currentSlotOrder = slotOrderMap[playerType][index];
+            const currentDisplayedSlotNumber = displayedSlotNumbers[playerType][index];
+
             if (card) {
                 const cardEl = createCardElement(card);
+                cardEl.style.order = currentSlotOrder + ' !important'; // Apply order to card
                 if (playerType === 'player') {
                     cardEl.addEventListener('click', () => onPlayerFieldCardClick(card, cardEl)); // Player's own field cards
                 } else { // Opponent's field cards
@@ -735,7 +749,8 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
                 const slotEl = document.createElement('div');
                 slotEl.className = 'card-slot';
                 slotEl.dataset.slotIndex = index;
-                slotEl.innerHTML = `<span class="slot-number">${index + 1}</span>`; // Add slot number
+                slotEl.style.order = currentSlotOrder + ' !important'; // Apply order to empty slot
+                slotEl.innerHTML = `<span class="slot-number">${currentDisplayedSlotNumber}</span>`; // Add slot number
                 if (fieldId === 'player-field') {
                     slotEl.addEventListener('click', () => onSlotClick(index));
                 }
@@ -752,8 +767,8 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         }
         // If game started, it must be player's turn. If not started, it's placement phase.
 
-        if (!state.selectedCard) {
-            addLog('先に手札から配置するカードを選択してください。');
+        if (state.selectedCard.type === 'support') { // Support cards cannot be placed on field
+            addLog('サポートカードはフィールドに配置できません。');
             return;
         }
         if (state.selectedCard.type === 'support') { // Support cards cannot be placed on field
