@@ -13,8 +13,8 @@
             --border-color: #555;
             --field-bg: rgba(0, 0, 0, 0.2);
             --hand-bg: rgba(0, 0, 0, 0.3);
-            --card-width: 120px;
-            --card-height: 173px;
+            --card-width: 90px;
+            --card-height: 130px;
         }
 
         body {
@@ -88,11 +88,10 @@
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(2, 1fr);
             gap: 0px;
-            padding: 5px;
+            padding: 0px;
             background: var(--field-bg);
             flex-grow: 1;
-            align-items: center;
-            justify-items: center;
+            /* Remove align-items and justify-items to make cards fill grid cell */
         }
 
         /* Center Area */
@@ -129,7 +128,7 @@
             background: var(--hand-bg);
         }
         .player-hand .card {
-            margin: 0 -30px; /* Adjusted overlap for new card size */
+            margin: 0; /* No overlap for full visibility */
             transition: transform 0.2s ease, margin 0.2s ease;
         }
         .player-hand .card:hover {
@@ -142,14 +141,14 @@
         .card-slot {
             width: var(--card-width);
             height: var(--card-height);
-            border: 1px dashed #555; /* Reduced border for less visual gap */
+            border: none; /* No border for complete adjacency */
             border-radius: 8px;
             background-color: rgba(255, 255, 255, 0.05);
         }
         .card {
             width: var(--card-width);
             height: var(--card-height);
-            border: 1px solid #333; /* Reduced border for less visual gap */
+            border: none; /* No border for complete adjacency */
             border-radius: 8px;
             background-color: #ddd;
             color: #333;
