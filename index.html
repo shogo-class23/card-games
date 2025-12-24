@@ -346,7 +346,7 @@
             </div>
             <div id="opponent-deck" class="deck-info">
                 <div class="deck"></div>
-                <span class="deck-label">デッキ: 18/30</span>
+                <span class="deck-label">山札: 18/30</span>
             </div>
             <div id="opponent-power" class="power-info">
                 <span class="power-label">パワー: 0</span>
@@ -357,12 +357,13 @@
     <!-- Center Area -->
     <div class="center-area">
         <div id="opponent-score" class="score">0</div>
-                                <div class="center-controls">
-                                    <button id="placement-ok-button" class="game-button">配置OK</button>
-                                    <button id="end-turn-button" class="game-button" style="display:none;">ターン終了</button>
-                                    <div id="current-turn-display" class="turn-display"></div>
-                                    <div id="card-use-message" class="card-message"></div>
-                                </div>        <div id="player-score" class="score">0</div>
+                                                <div class="center-controls">
+                                                    <button id="placement-ok-button" class="game-button">配置OK</button>
+                                                    <button id="attach-power-central-button" class="game-button" style="display:none;">パワー注入</button>
+                                                    <button id="end-turn-button" class="game-button" style="display:none;">ターン終了</button>
+                                                    <div id="current-turn-display" class="turn-display"></div>
+                                                    <div id="card-use-message" class="card-message"></div>
+                                                </div>        <div id="player-score" class="score">0</div>
     </div>
 
     <!-- Player's Area -->
@@ -371,7 +372,7 @@
         <div id="player-field" class="field"></div>
         <div class="info-bar">
             <div id="player-deck" class="deck-info">
-                 <span class="deck-label">デッキ: 17/30</span>
+                 <span class="deck-label">山札: 17/30</span>
                 <div class="deck"></div>
             </div>
             <div id="player-graveyard" class="graveyard-info">
@@ -393,7 +394,6 @@
         <h4 id="action-card-info"></h4>
         <button id="attack-button" class="game-button" style="display:none;">攻撃</button>
         <button id="special-attack-button" class="game-button" style="display:none;" disabled>特別技 (選択不可)</button>
-        <button id="attach-power-in-panel-button" class="game-button" style="display:none;">子のモンスターにパワーをつける</button>
         <button id="cancel-action-button" class="game-button">キャンセル</button>
     </div>
 
@@ -671,22 +671,27 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         const isInFrontRow = cardIndex !== -1 && cardIndex < 3;
 
         actionCardInfo.textContent = `選択中のカード: ${card.suit} ${card.rank} (攻撃力: ${card.value})`;
-        actionPanel.style.display = 'flex';
+        actionPanel.style.display = 'flex'; // This shows the action panel
 
         if (isInFrontRow) {
-            // This card can potentially attack, so show attack options
+            // This card can potentially attack, so show attack options in action panel
             attackButton.style.display = 'block';
             specialAttackButton.style.display = 'block';
-            attachPowerInPanelButton.style.display = 'none'; // Hide power button if attacking
             state.attackingCardId = card.id; // Set attackingCardId for attack flow
-            addLog(`自分のカード ${card.suit} ${card.rank} を選択しました。攻撃対象を選んでください、またはパワーをアタッチしてください。`);
+            addLog(`自分のカード ${card.suit} ${card.rank} を選択しました。攻撃対象を選んでください。`);
         } else {
-            // Not in front row, can only attach power
+            // Not in front row, no attack options from action panel
             attackButton.style.display = 'none';
             specialAttackButton.style.display = 'none';
-            attachPowerInPanelButton.style.display = 'block';
             state.attackingCardId = null; // Clear attackingCardId if not attacking
-            addLog(`自分のカード ${card.suit} ${card.rank} を選択しました。パワーをアタッチできます。`);
+            addLog(`自分のカード ${card.suit} ${card.rank} を選択しました。`);
+        }
+
+        // Always show the central power button if a player's monster on field is selected and it's player's turn
+        if (state.selectedCard && state.selectedCard.type === 'monster' && state.player.field.includes(state.selectedCard) && state.turn === 'player') {
+            attachPowerCentralButton.style.display = 'block';
+        } else {
+            attachPowerCentralButton.style.display = 'none';
         }
     }
 
@@ -823,12 +828,12 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         renderField('opponent-field', state.opponent.field, 'opponent');
 
         // Update Info Panels
-        document.querySelector('#player-deck .deck-label').textContent = `デッキ: ${state.player.deckCount}/${state.player.totalDeck}`;
+        document.querySelector('#player-deck .deck-label').textContent = `山札: ${state.player.deckCount}/${state.player.totalDeck}`;
         document.querySelector('#player-graveyard .graveyard-label').textContent = `墓地: ${state.player.graveyard.length}`;
         document.querySelector('#player-hand .hand-label').textContent = `手札: ${state.player.hand.length}`; // New: Player hand count
         document.querySelector('#player-power .power-label').textContent = `パワー: ${state.player.currentPower}`;
 
-        document.querySelector('#opponent-deck .deck-label').textContent = `デッキ: ${state.opponent.deckCount}/${state.opponent.totalDeck}`;
+        document.querySelector('#opponent-deck .deck-label').textContent = `山札: ${state.opponent.deckCount}/${state.opponent.totalDeck}`;
         document.querySelector('#opponent-graveyard .graveyard-label').textContent = `墓地: ${state.opponent.graveyard.length}`;
         document.querySelector('#opponent-hand .hand-label').textContent = `手札: ${state.opponent.hand.length}`; // New: Opponent hand count
         document.querySelector('#opponent-power .power-label').textContent = `パワー: ${state.opponent.currentPower}`;
@@ -847,7 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         };
         const displayedSlotNumbers = {
             'player': [1, 2, 3, 6, 5, 4],
-            'opponent': [4, 5, 6, 3, 2, 1] // Visual slot numbers for opponent's field
+            'opponent': [1, 2, 3, 4, 5, 6] // Visual slot numbers for opponent's field: front row (1,2,3) closest to player
         };
 
         fieldCards.forEach((card, index) => {
@@ -885,10 +890,6 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         }
         // If game started, it must be player's turn. If not started, it's placement phase.
 
-        if (state.selectedCard.type === 'support') { // Support cards cannot be placed on field
-            addLog('サポートカードはフィールドに配置できません。');
-            return;
-        }
         if (state.selectedCard.type === 'support') { // Support cards cannot be placed on field
             addLog('サポートカードはフィールドに配置できません。');
             return;
@@ -991,15 +992,11 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         addLog(`${state[player].name}がパワーを1獲得！(合計: ${state[player].currentPower})`);
 
         if (player === 'player') {
-            // Player draws a card at the start of their turn
-            if (state.player.deck.length > 0) {
-                const drawnCard = state.player.deck.shift(); // Remove from top of deck
-                state.player.hand.push(drawnCard); // Add to hand
-                state.player.deckCount--;
-                addLog(`山札から ${drawnCard.suit} ${drawnCard.rank} を引きました。`);
-            } else {
-                addLog('山札がありません。カードを引けませんでした。');
-            }
+            drawCard('player'); // Automate draw for player
+            attachPowerCentralButton.style.display = 'block'; // Show for player
+        } else {
+            drawCard('opponent'); // Automate draw for opponent
+            attachPowerCentralButton.style.display = 'none'; // Hide for opponent
         }
 
         // Check for Skip Turn effect
@@ -1032,23 +1029,25 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     }
 
     function checkWinCondition() {
-        const playerFieldEmpty = state.player.field.every(c => c === null);
-        const opponentFieldEmpty = state.opponent.field.every(c => c === null);
+        const playerMonsters = state.player.field.filter(c => c !== null && c.type === 'monster').length;
+        const opponentMonsters = state.opponent.field.filter(c => c !== null && c.type === 'monster').length;
 
-        if (playerFieldEmpty) {
-            addLog('あなたのフィールド上のカードがすべてなくなりました。あなたの負けです！');
-            // Implement game over logic (e.g., disable further actions, show restart button)
-            state.gameStarted = false; // Stop game
-            placementOkButton.style.display = 'block'; // Show restart button (use placementOk for now)
-            placementOkButton.textContent = 'ゲームを再開';
-            placementOkButton.disabled = false;
-        } else if (opponentFieldEmpty) {
-            addLog('相手のフィールド上のカードがすべてなくなりました。あなたの勝ちです！');
-            // Implement game over logic
+        if (playerMonsters === 0) {
+            addLog('あなたのフィールド上のモンスターがすべていなくなりました。');
+            alert('ゲームオーバー！あなたの負けです！'); // Prominent message
             state.gameStarted = false; // Stop game
             placementOkButton.style.display = 'block';
             placementOkButton.textContent = 'ゲームを再開';
             placementOkButton.disabled = false;
+            attachPowerCentralButton.style.display = 'none'; // Hide central power button on game over
+        } else if (opponentMonsters === 0) {
+            addLog('相手のフィールド上のモンスターがすべていなくなりました。');
+            alert('勝利！おめでとうございます！'); // Prominent message
+            state.gameStarted = false; // Stop game
+            placementOkButton.style.display = 'block';
+            placementOkButton.textContent = 'ゲームを再開';
+            placementOkButton.disabled = false;
+            attachPowerCentralButton.style.display = 'none'; // Hide central power button on game over
         }
     }
 
@@ -1067,18 +1066,25 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     }
 
     const setupInitialState = () => {
-        addLog("メインフェーズに移行 (準備)");
+        addLog("ゲーム準備中...");
         
-        state.player.hand = [
-            new Card('earth', '9'),
-            new Card('fire', '6'),
-            new Card('fire', '4'),
-            new Card('earth', '3'),
-            new Card('water', 'Q'),
-            new Card('wind', 'K'),
-            new Card('water', 'A'),
-            new Card('earth', '8'),
-        ];
+        // Create and shuffle decks for both player and opponent
+        state.player.deck = createDeck();
+        state.opponent.deck = createDeck();
+        state.player.deckCount = state.player.deck.length;
+        state.opponent.deckCount = state.opponent.deck.length;
+
+        // Draw initial hands (e.g., 5 cards each)
+        for (let i = 0; i < 5; i++) {
+            if (state.player.deck.length > 0) {
+                state.player.hand.push(state.player.deck.shift());
+            }
+            if (state.opponent.deck.length > 0) {
+                state.opponent.hand.push(state.opponent.deck.shift());
+            }
+        }
+        state.player.deckCount = state.player.deck.length;
+        state.opponent.deckCount = state.opponent.deck.length;
         
         updateTurnDisplay(); // Set initial '配置準備中' text
         render();
@@ -1098,32 +1104,46 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
 
         placementOkButton.style.display = 'none';
 
-        // Opponent places 3 monsters
-        const opponentDeck = createDeck();
+        // Opponent places 3 monsters from their deck
         for (let i = 0; i < 3; i++) {
-            const randomCard = opponentDeck[Math.floor(Math.random() * opponentDeck.length)];
-            let randomSlot;
-            do {
-                randomSlot = Math.floor(Math.random() * 6);
-            } while (state.opponent.field[randomSlot] !== null);
-            state.opponent.field[randomSlot] = randomCard;
-            opponentDeck.splice(opponentDeck.indexOf(randomCard), 1);
+            if (state.opponent.deck.length > 0) {
+                let randomSlot;
+                do {
+                    randomSlot = Math.floor(Math.random() * 6);
+                } while (state.opponent.field[randomSlot] !== null);
+                state.opponent.field[randomSlot] = state.opponent.deck.shift(); // Place from deck
+                state.opponent.deckCount--;
+            } else {
+                addLog('相手の山札が足りず、モンスターを配置できませんでした。');
+                break;
+            }
         }
         addLog("相手が3体のモンスターを配置");
         addLog("プレイヤーの配置完了");
         
+        // Ensure both decks are shuffled right before the match starts
+        shuffle(state.player.deck);
+        shuffle(state.opponent.deck);
+
         addLog("先行決定ルーレット...");
         setTimeout(() => {
             const startingPlayer = Math.random() < 0.5 ? 'player' : 'opponent';
             state.gameStarted = true;
             addLog(`${startingPlayer === 'player' ? 'あなたが先行' : '相手が先行'}です！`);
             startTurn(startingPlayer); // Start the first turn
+            // Show central power button if player is starting, hide otherwise
+            if (startingPlayer === 'player') {
+                attachPowerCentralButton.style.display = 'block';
+            } else {
+                attachPowerCentralButton.style.display = 'none';
+            }
         }, 2000); // 2 second delay for roulette anticipation
     });
     
     endTurnButton.addEventListener('click', () => {
         if (state.gameStarted && state.turn === 'player') {
             endTurnButton.style.display = 'none'; // Hide button immediately
+            attachPowerCentralButton.style.display = 'none'; // Hide central power button on turn end
             endTurn();
         }
     });
@@ -1131,10 +1151,12 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
     // Attack Action Panel Event Listeners
     const attackButton = document.getElementById('attack-button');
     const specialAttackButton = document.getElementById('special-attack-button');
-    const attachPowerInPanelButton = document.getElementById('attach-power-in-panel-button'); // New button
-    const cancelActionButton = document.getElementById('cancel-action-button'); // Renamed
+    // Removed attachPowerInPanelButton
+    const cancelActionButton = document.getElementById('cancel-action-button');
     const actionPanel = document.getElementById('action-panel');
-    const actionCardInfo = document.getElementById('action-card-info'); // Renamed
+    const actionCardInfo = document.getElementById('action-card-info');
+
+    const attachPowerCentralButton = document.getElementById('attach-power-central-button'); // New central power button
 
     function cancelAction() {
         if (state.selectedCard) {
@@ -1148,10 +1170,11 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             state.attackingCardId = null;
         }
         actionPanel.style.display = 'none';
+        attachPowerCentralButton.style.display = 'none'; // Hide central power button on cancel
         addLog('アクションをキャンセルしました。');
     }
 
-    function onAttachPowerInPanelClick() {
+    function onAttachPowerCentralClick() { // Renamed function
         const player = state.player;
         const targetCard = state.selectedCard;
 
@@ -1179,17 +1202,28 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         render();
     }
 
+    function drawCard(playerType) {
+        const playerState = state[playerType];
+        if (playerState.deck.length > 0) {
+            const drawnCard = playerState.deck.shift();
+            playerState.hand.push(drawnCard);
+            playerState.deckCount = playerState.deck.length; // Update deckCount correctly
+            addLog(`${playerType === 'player' ? 'あなた' : '相手'}は山札から ${drawnCard.suit} ${drawnCard.rank} を引きました。`);
+        } else {
+            addLog(`${playerType === 'player' ? 'あなたの' : '相手の'}山札がありません。カードを引けませんでした。`);
+        }
+    }
+
 
     attackButton.addEventListener('click', () => {
-        // Attack logic will be triggered by clicking opponent's card after selecting attacker
         addLog('攻撃対象の相手カードを選択してください。');
     });
 
     specialAttackButton.addEventListener('click', () => {
-        addLog('特別技はまだ実装されていません。'); // Update message
+        addLog('特別技はまだ実装されていません。');
     });
 
-    attachPowerInPanelButton.addEventListener('click', onAttachPowerInPanelClick);
+    attachPowerCentralButton.addEventListener('click', onAttachPowerCentralClick); // Attach listener to new central button
 
     cancelActionButton.addEventListener('click', cancelAction);
 
