@@ -129,7 +129,7 @@
             background: var(--hand-bg);
         }
         .player-hand .card {
-            margin: 0 -15px;
+            margin: 0 -5px; /* Further reduced overlap */
             transition: transform 0.2s ease, margin 0.2s ease;
         }
         .player-hand .card:hover {
@@ -142,14 +142,14 @@
         .card-slot {
             width: var(--card-width);
             height: var(--card-height);
-            border: 2px dashed #777;
+            border: 1px dashed #555; /* Reduced border for less visual gap */
             border-radius: 8px;
             background-color: rgba(255, 255, 255, 0.05);
         }
         .card {
             width: var(--card-width);
             height: var(--card-height);
-            border: 2px solid #222;
+            border: 1px solid #333; /* Reduced border for less visual gap */
             border-radius: 8px;
             background-color: #ddd;
             color: #333;
