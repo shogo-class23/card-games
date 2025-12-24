@@ -386,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             graveyard: [],
             deckCount: 17,
             totalDeck: 30,
+            attackedCardsThisTurn: [], // New property to track attacked cards
         },
         opponent: {
             deck: [],
@@ -394,7 +395,8 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             graveyard: [],
             deckCount: 18,
             totalDeck: 30,
-            skipNextTurn: false, // New property for skip card effect
+            skipNextTurn: false,
+            attackedCardsThisTurn: [], // New property for opponent too (though not implemented yet for opponent)
         },
         selectedCard: null,
         gameStarted: false,
@@ -602,6 +604,10 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
             addLog('選択中の攻撃カードが見つかりません。');
             return;
         }
+        if (state.player.attackedCardsThisTurn.includes(attackingCard.id)) {
+            addLog(`${attackingCard.suit} ${attackingCard.rank} はこのターン既に攻撃済みです。`);
+            return;
+        }
 
         // Only front row cards can attack/be attacked (simplified for now as all field cards can attack/be attacked)
         // More sophisticated logic would check card position in field[0-2] for front row
@@ -611,6 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
 
         card.hp -= attackingCard.value;
         state.attackCountThisTurn++;
+        state.player.attackedCardsThisTurn.push(attackingCard.id); // Mark card as attacked
         
         // Check if opponent card is destroyed
         if (card.hp <= 0) {
@@ -658,6 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
         document.querySelector('#opponent-hand .hand-label').textContent = `手札: ${state.opponent.hand.length}`; // New: Opponent hand count
         
         updateTurnDisplay(); // Update turn display on render
+        checkWinCondition(); // Check win/loss conditions
     }
 
     function renderField(fieldId, fieldCards, playerType) { // Added playerType parameter
@@ -807,6 +815,8 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
 
     function endTurn() {
         state.attackCountThisTurn = 0; // Reset attack count for the new turn
+        state.player.attackedCardsThisTurn = []; // Reset attacked cards for player
+        state.opponent.attackedCardsThisTurn = []; // Reset attacked cards for opponent (even if not used yet)
 
         // Rotate cards on the field
         state.player.field = rotateField(state.player.field);
@@ -814,6 +824,27 @@ document.addEventListener('DOMContentLoaded', () => {    const SUITS = ['fire', 
 
         const nextPlayer = state.turn === 'player' ? 'opponent' : 'player';
         startTurn(nextPlayer);
+    }
+
+    function checkWinCondition() {
+        const playerFieldEmpty = state.player.field.every(c => c === null);
+        const opponentFieldEmpty = state.opponent.field.every(c => c === null);
+
+        if (playerFieldEmpty) {
+            addLog('あなたのフィールド上のカードがすべてなくなりました。あなたの負けです！');
+            // Implement game over logic (e.g., disable further actions, show restart button)
+            state.gameStarted = false; // Stop game
+            placementOkButton.style.display = 'block'; // Show restart button (use placementOk for now)
+            placementOkButton.textContent = 'ゲームを再開';
+            placementOkButton.disabled = false;
+        } else if (opponentFieldEmpty) {
+            addLog('相手のフィールド上のカードがすべてなくなりました。あなたの勝ちです！');
+            // Implement game over logic
+            state.gameStarted = false; // Stop game
+            placementOkButton.style.display = 'block';
+            placementOkButton.textContent = 'ゲームを再開';
+            placementOkButton.disabled = false;
+        }
     }
 
     function rotateField(fieldArray) {
