@@ -108,14 +108,32 @@
             font-size: 48px;
             font-weight: bold;
         }
-        .turn-indicator {
-            font-size: 24px;
-            font-weight: bold;
+        .center-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .game-button {
             padding: 10px 20px;
-            background: var(--fire-color);
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #4CAF50; /* Green */
             color: white;
-            border-radius: 10px;
-            box-shadow: 0 0 10px var(--fire-color);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: background-color 0.2s;
+        }
+        .game-button:hover {
+            background-color: #45a049;
+        }
+        .turn-display {
+            font-size: 20px;
+            font-weight: bold;
+            color: #FFD700; /* Gold */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
         }
 
         /* Player Hand */
@@ -278,8 +296,11 @@
 
     <!-- Center Area -->
     <div class="center-area">
-        <div id="opponent-score" class="score">1</div>
-        <div class="turn-indicator">あなたの番</div>
+        <div id="opponent-score" class="score">0</div>
+        <div class="center-controls">
+            <button id="placement-ok-button" class="game-button">配置OK</button>
+            <div id="current-turn-display" class="turn-display"></div>
+        </div>
         <div id="player-score" class="score">0</div>
     </div>
 
@@ -335,6 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalDeck: 30,
         },
         selectedCard: null,
+        gameStarted: false, // New property
     };
 
     function createDeck() {
@@ -443,6 +465,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function onSlotClick(index) {
+        if (state.gameStarted) { // Prevent placement after game starts
+            addLog('ゲーム開始後は配置できません。');
+            return;
+        }
         if (!state.selectedCard) {
             addLog('先に手札から配置するカードを選択してください。');
             return;
@@ -455,10 +481,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Place the card
         const cardToPlace = state.selectedCard;
-        state.player.field[index] = cardToPlace;
-
-        // Remove from hand
         state.player.hand = state.player.hand.filter(c => c.id !== cardToPlace.id);
+        state.player.field[index] = cardToPlace;
         
         state.selectedCard = null;
 
@@ -467,35 +491,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupInitialState() {
-        // Initial Logs
-        addLog("メインフェーズに移行");
-        addLog("相手が3体のモンスターを配置");
-        addLog("プレイヤーの配置完了"); // This implies player already placed, but we allow placement for demo
-
-        // Setup opponent's field
-        const opponentDeck = createDeck();
-        state.opponent.field[1] = new Card('fire', '9');
-        state.opponent.field[3] = new Card('wind', 'J');
-        state.opponent.field[5] = new Card('fire', '8');
-
-        // Setup player's hand
+        // Initial Logs for setup phase
+        addLog("メインフェーズに移行 (準備)");
+        
+        // Setup player's hand (always 8 cards at start)
         state.player.hand = [
             new Card('earth', '9'),
             new Card('fire', '6'),
             new Card('fire', '4'),
             new Card('earth', '3'),
-            // As per "初期は８枚"
             new Card('water', 'Q'),
             new Card('wind', 'K'),
             new Card('water', 'A'),
             new Card('earth', '8'),
         ];
         
-        // Render everything
-        render();
+        document.getElementById('current-turn-display').textContent = '配置準備中';
+        render(); // Render initial hand and empty fields
     }
+
+    // --- Game Start Logic ---
+    const placementOkButton = document.getElementById('placement-ok-button');
+    placementOkButton.addEventListener('click', () => {
+        if (state.gameStarted) return; // Prevent multiple clicks
+
+        placementOkButton.style.display = 'none'; // Hide button
+
+        // Opponent places 3 monsters (randomly for now)
+        const opponentDeck = createDeck(); // Temporary deck for opponent placement
+        for (let i = 0; i < 3; i++) {
+            const randomCard = opponentDeck[Math.floor(Math.random() * opponentDeck.length)];
+            let randomSlot;
+            do {
+                randomSlot = Math.floor(Math.random() * 6);
+            } while (state.opponent.field[randomSlot] !== null);
+            state.opponent.field[randomSlot] = randomCard;
+            opponentDeck.splice(opponentDeck.indexOf(randomCard), 1); // Remove from temp deck
+        }
+        addLog("相手が3体のモンスターを配置");
+        addLog("プレイヤーの配置完了");
+        
+        // Randomly decide starting player
+        const startingPlayer = Math.random() < 0.5 ? 'player' : 'opponent';
+        state.turn = startingPlayer;
+        addLog(`${startingPlayer === 'player' ? 'あなたが先行' : '相手が先行'}です！`);
+        
+        state.gameStarted = true;
+        document.getElementById('current-turn-display').textContent = `${state.turn === 'player' ? 'あなたの番' : '相手の番'}`;
+        render(); // Re-render to show opponent's cards and update turn display
+    });
     
-    // Start the game
+    // Start the game setup
     setupInitialState();
 });
 </script>
