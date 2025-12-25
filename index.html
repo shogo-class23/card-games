@@ -174,7 +174,7 @@
             <div id="controls">
                 <button id="ok-btn" class="game-button">配置OK</button>
                 <div id="battle-controls" style="display:none; flex-direction: column; gap: 10px; align-items: center;">
-                    <button id="power-btn" class="game-button" style="background:#ccac00">パワー注入</button>
+                    <button id="power-btn" class="game-button" style="background:#ccac00">パワー</button>
                     <button id="end-turn-btn" class="game-button">ターン終了</button>
                 </div>
             </div>
@@ -385,45 +385,51 @@ function handleFieldClick(card, index) {
 
 document.getElementById('power-btn').onclick = () => {
     if (!state.selectedCard) {
-        addLog("パワー注入失敗: カードが選択されていません。");
-        return;
-    }
-    if (state.player.power <= 0) {
-        addLog("パワー注入失敗: パワーが不足しています。");
-        return;
-    }
-    if (state.canPlaceCard) {
-        addLog("パワー注入失敗: 配置フェーズ中は注入できません。");
+        addLog("カードを選択してください。");
         return;
     }
     
     const card = state.selectedCard;
-    if (!state.player.field.includes(card)) {
-        addLog("パワー注入失敗: フィールド上のカードを選択してください。");
-        return;
-    }
+    
+    // フィールドにないカードや、すでに最大まで貯まっている場合は何もしない
+    if (!state.player.field.includes(card)) return;
     if (card.attachedPower >= card.requiredPower) {
-        addLog("パワー注入失敗: このカードは既に最大パワーです。");
+        addLog(`${card.rank} は既にフルパワーです。`);
         return;
     }
 
-    // Original logic if all checks pass
-    card.attachedPower++;
-    state.player.power--;
-    state.statusText = `パワー更新: ${card.rank} (Power:${card.attachedPower}/${card.requiredPower})`;
-    addLog(`パワー注入: ${card.rank} にパワーを注入しました。`);
+    // プレイヤーの共有パワーを消費して、カードにチャージ
+    if (state.player.power > 0) {
+        card.attachedPower++;
+        state.player.power--;
+        state.statusText = `パワー更新: ${card.rank} (${card.attachedPower}/${card.requiredPower})`;
+        addLog(`${card.rank} にパワーを貯めました。`);
+    } else {
+        addLog("プレイヤーのパワーが足りません！");
+    }
     render();
 };
 
 function handleAttack(targetCard) {
-    if (state.canPlaceCard || !state.selectedCard) return; // Prevent attack during placement
+    if (state.canPlaceCard || !state.selectedCard) return;
+    
     const attacker = state.selectedCard;
+    
+    // 【重要修正】パワーが規定値まで貯まっていないカードは攻撃できない
+    if (attacker.attachedPower < attacker.requiredPower) {
+        addLog(`攻撃失敗: ${attacker.rank} はまだパワーが貯まっていません！`);
+        state.statusText = "パワーが足りません！";
+        render();
+        return;
+    }
+
     if (state.player.attackedIds.includes(attacker.id)) {
         state.statusText = `${attacker.rank}は既に攻撃済みです。`;
         render();
         return;
     }
     
+    // 攻撃処理
     const totalAtk = attacker.value + attacker.attachedPower;
     targetCard.hp -= totalAtk;
     state.player.attackedIds.push(attacker.id);
@@ -433,9 +439,9 @@ function handleAttack(targetCard) {
         const idx = state.opponent.field.indexOf(targetCard);
         if (idx !== -1) {
             state.opponent.field[idx] = null;
-            state.opponent.graveyard.push(targetCard); // Move to graveyard
+            state.opponent.graveyard.push(targetCard);
         }
-        state.statusText += ` ${targetCard.rank}を撃破`;
+        state.statusText += ` ${targetCard.rank}を撃破！`;
     }
     state.selectedCard = null;
     render();
