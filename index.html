@@ -384,14 +384,35 @@ function handleFieldClick(card, index) {
 }
 
 document.getElementById('power-btn').onclick = () => {
-    if (!state.selectedCard || state.player.power <= 0 || state.canPlaceCard) return; // Prevent power injection during placement
-    const card = state.selectedCard;
-    if (state.player.field.includes(card) && card.attachedPower < card.requiredPower) {
-        card.attachedPower++;
-        state.player.power--;
-        state.statusText = `パワー更新: ${card.rank} (K:${card.attachedPower}/${card.requiredPower})`;
-        render();
+    if (!state.selectedCard) {
+        addLog("パワー注入失敗: カードが選択されていません。");
+        return;
     }
+    if (state.player.power <= 0) {
+        addLog("パワー注入失敗: パワーが不足しています。");
+        return;
+    }
+    if (state.canPlaceCard) {
+        addLog("パワー注入失敗: 配置フェーズ中は注入できません。");
+        return;
+    }
+    
+    const card = state.selectedCard;
+    if (!state.player.field.includes(card)) {
+        addLog("パワー注入失敗: フィールド上のカードを選択してください。");
+        return;
+    }
+    if (card.attachedPower >= card.requiredPower) {
+        addLog("パワー注入失敗: このカードは既に最大パワーです。");
+        return;
+    }
+
+    // Original logic if all checks pass
+    card.attachedPower++;
+    state.player.power--;
+    state.statusText = `パワー更新: ${card.rank} (Power:${card.attachedPower}/${card.requiredPower})`;
+    addLog(`パワー注入: ${card.rank} にパワーを注入しました。`);
+    render();
 };
 
 function handleAttack(targetCard) {
