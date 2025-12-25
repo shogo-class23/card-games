@@ -443,7 +443,7 @@ function init() {
 
     // Deal initial hands
     state.player.hand = fullDeck.splice(0, 5); // Player gets 5 cards
-    state.opponent.hand = fullDeck.splice(0, 3); // Opponent gets 3 cards
+    state.opponent.hand = fullDeck.splice(0, 2); // Opponent gets 2 cards
     state.opponent.handCount = state.opponent.hand.length; // Update opponent's hand count
 
     // Remaining cards go into respective decks (for simplicity, split evenly)
@@ -480,10 +480,82 @@ document.getElementById('ok-btn').onclick = () => {
 document.getElementById('end-turn-btn').onclick = () => {
     state.player.attackedIds = [];
     state.player.power = 5; // Restore power
-    state.statusText = "ターン終了。パワーを回復しました。";
-    addLog("ターン終了/パワー回復");
+    state.statusText = "ターン終了。相手のターンへ移行します。";
+    addLog("プレイヤーのターン終了");
     render();
+    setTimeout(opponentTurn, 1000); // Wait 1 second before opponent's turn
 };
+
+function opponentTurn() {
+    state.turn = 'opponent';
+    state.statusText = "相手のターンです...";
+    addLog("相手のターン開始");
+    render();
+
+    // Simulate opponent actions
+    // For now, let's just make the opponent draw a card if deck is not empty
+    setTimeout(() => {
+        if (state.opponent.deck.length > 0) {
+            const drawnCard = state.opponent.deck.shift();
+            state.opponent.hand.push(drawnCard);
+            state.opponent.handCount = state.opponent.hand.length; // Update displayed hand count
+            addLog(`相手がカードを引きました。`);
+        } else {
+            addLog(`相手の山札がありません。`);
+        }
+        
+        // Opponent plays a card if possible (very basic AI)
+        const playableCardInHand = state.opponent.hand.find(card => 
+            state.opponent.field.includes(null) && card.requiredPower <= state.opponent.power
+        );
+        if (playableCardInHand) {
+            const emptySlotIndex = state.opponent.field.indexOf(null);
+            if (emptySlotIndex !== -1) {
+                state.opponent.field[emptySlotIndex] = playableCardInHand;
+                state.opponent.hand.splice(state.opponent.hand.indexOf(playableCardInHand), 1);
+                state.opponent.handCount = state.opponent.hand.length;
+                state.opponent.power -= playableCardInHand.requiredPower;
+                addLog(`相手が ${playableCardInHand.rank} を配置しました。`);
+            }
+        } else {
+            addLog(`相手はカードを配置しませんでした。`);
+        }
+
+        // Simulate opponent attacking (very basic logic)
+        const opponentFieldCards = state.opponent.field.filter(c => c !== null);
+        opponentFieldCards.forEach(oppCard => {
+            if (state.player.field.filter(c => c !== null).length > 0) {
+                // Attack player's first field card
+                const targetCard = state.player.field.find(c => c !== null);
+                if (targetCard) {
+                    const totalOppAtk = oppCard.value + oppCard.attachedPower;
+                    targetCard.hp -= totalOppAtk;
+                    addLog(`相手の ${oppCard.rank} があなたの ${targetCard.rank} に ${totalOppAtk} ダメージ！`);
+                    if (targetCard.hp <= 0) {
+                        const idx = state.player.field.indexOf(targetCard);
+                        state.player.field[idx] = null;
+                        state.player.graveyard.push(targetCard);
+                        state.player.hp--; // Player loses HP if a card is destroyed
+                        addLog(`あなたの ${targetCard.rank} は撃破されました！`);
+                    }
+                }
+            } else {
+                // If no player field cards, direct attack player
+                const totalOppAtk = oppCard.value + oppCard.attachedPower;
+                state.player.hp -= totalOppAtk;
+                addLog(`相手の ${oppCard.rank} があなたに直接 ${totalOppAtk} ダメージ！`);
+            }
+        });
+
+
+        // End opponent's turn and pass back to player
+        state.opponent.power = 5; // Restore opponent's power
+        state.turn = 'player';
+        state.statusText = "あなたのターンです。";
+        addLog("あなたのターン開始");
+        render();
+    }, 2000); // Simulate opponent thinking/acting for 2 seconds
+}
 
 init();
 </script>
