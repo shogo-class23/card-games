@@ -214,7 +214,7 @@ class Card {
 }
 
 const state = {
-    player: { hand: [], field: Array(6).fill(null), attackedIds: [], power: 5, hp: 20, deck: [], graveyard: [] },
+    player: { hand: [], field: Array(6).fill(null), attackedIds: [], power: 5, hp: 20, deck: [], graveyard: [], powerInjectedThisTurn: false },
     opponent: { handCount: 5, field: Array(6).fill(null), power: 5, hp: 20, deck: [], graveyard: [] },
     selectedCard: null,
     turn: 'player',
@@ -384,6 +384,10 @@ function handleFieldClick(card, index) {
 }
 
 document.getElementById('power-btn').onclick = () => {
+    if (state.player.powerInjectedThisTurn) {
+        addLog("パワー注入失敗: 1ターンに1度しかパワーを注入できません。");
+        return;
+    }
     if (!state.selectedCard) {
         addLog("カードを選択してください。");
         return;
@@ -404,6 +408,7 @@ document.getElementById('power-btn').onclick = () => {
         state.player.power--;
         state.statusText = `パワー更新: ${card.rank} (${card.attachedPower}/${card.requiredPower})`;
         addLog(`${card.rank} にパワーを貯めました。`);
+        state.player.powerInjectedThisTurn = true; // Set flag
     } else {
         addLog("プレイヤーのパワーが足りません！");
     }
