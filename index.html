@@ -7,7 +7,8 @@
         :root {
             --fire-color: #FF7B7B; --water-color: #7B8CFF;
             --wind-color: #7BFFB8; --earth-color: #C19A6B;
-            --card-width: 90px; --card-height: 130px;
+            --card-width: 63px; /* 90 * 0.7 */
+            --card-height: 91px; /* 130 * 0.7 */
         }
         body { background-color: #3D3D3D; color: #F0F0F0; font-family: sans-serif; display: flex; justify-content: center; margin: 0; overflow: hidden; }
         .game-container { width: 100%; max-width: 1000px; display: flex; flex-direction: column; height: 100vh; position: relative; }
@@ -44,7 +45,7 @@
         .stats-bottom { font-size: 0.8em; display: flex; flex-direction: column; align-items: flex-start; }
         .hp-badge { position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.6); color: white; padding: 1px 4px; border-radius: 4px; font-size: 0.7em; }
 
-        .player-hand, .opponent-hand-area { height: 150px; display: flex; justify-content: center; align-items: center; gap: 8px; background: rgba(0,0,0,0.4); }
+        .player-hand, .opponent-hand-area { height: calc(var(--card-height) + 20px); display: flex; justify-content: center; align-items: center; gap: 8px; background: rgba(0,0,0,0.4); }
         .player-hand .card { width: var(--card-width); height: var(--card-height); } /* Revert to smaller size */
         .opponent-hand-area .card { width: var(--card-width); height: var(--card-height); }
         .card-pile-slot { 
