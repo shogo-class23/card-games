@@ -72,9 +72,8 @@
     <div class="center-area">
         <div id="opp-status" style="font-size: 24px;">相手: 20</div>
         <div id="controls">
-            <div id="player-power-display" class="power-display">パワー: 5</div>
             <button id="ok-btn" class="game-button">配置OK</button>
-            <div id="battle-controls" style="display:none; gap: 10px; flex-direction: column;">
+            <div id="battle-controls" style="display:none; gap: 10px;">
                 <button id="power-btn" class="game-button" style="background:#ccac00">パワー注入</button>
                 <button id="end-turn-btn" class="game-button">ターン終了</button>
             </div>
@@ -139,6 +138,7 @@ function render() {
     }
 
     document.getElementById('player-power-display').innerHTML = `パワー: ${state.player.power}`;
+    document.getElementById('ply-status').innerHTML = `パワー: ${state.player.power}`;
 }
 
 function renderField(id, field, isOpponent) {
