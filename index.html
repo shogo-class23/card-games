@@ -551,6 +551,12 @@ function opponentTurn() {
         // Simulate opponent attacking (very basic logic)
         const opponentFieldCards = state.opponent.field.filter(c => c !== null);
         opponentFieldCards.forEach(oppCard => {
+            // Opponent card must have enough power to attack
+            if (oppCard.attachedPower < oppCard.requiredPower) {
+                addLog(`相手の ${oppCard.rank} はまだパワーが貯まっていないため攻撃できません。`);
+                return; // Skip attack for this card
+            }
+            
             if (state.player.field.filter(c => c !== null).length > 0) {
                 // Attack player's first field card
                 const targetCard = state.player.field.find(c => c !== null);
