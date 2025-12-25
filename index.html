@@ -15,7 +15,7 @@
         /* 654 / 321 のグリッド配置 */
         .field { 
             display: grid; 
-            grid-template-areas: "slot5 slot4 slot3" "slot2 slot1 slot0"; 
+            grid-template-areas: "slot0 slot1 slot2" "slot5 slot4 slot3"; 
             gap: 10px; padding: 15px; justify-content: center; background: rgba(0,0,0,0.2);
         }
         .card-slot { width: var(--card-width); height: var(--card-height); background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; position: relative; border: 1px dashed rgba(255,255,255,0.2); }
@@ -43,6 +43,7 @@
 
         .player-hand, .opponent-hand-area { height: 150px; display: flex; justify-content: center; align-items: center; gap: 8px; background: rgba(0,0,0,0.4); }
         .player-hand .card { width: var(--card-width); height: var(--card-height); } /* Revert to smaller size */
+        .opponent-hand-area .card { width: var(--card-width); height: var(--card-height); }
         .log-area { position: absolute; left: 10px; top: 10px; width: 240px; height: 250px; background: rgba(0,0,0,0.8); font-size: 11px; overflow-y: auto; padding: 10px; border-radius: 5px; border: 1px solid #555; z-index: 100; }
         .center-area { 
             display: flex; 
@@ -68,8 +69,9 @@
     <div class="center-area">
         <div id="opp-status" style="font-size: 24px;">相手: 20</div>
         <div id="controls">
+            <div id="player-power-display" class="power-display">パワー: 5</div>
             <button id="ok-btn" class="game-button">配置OK</button>
-            <div id="battle-controls" style="display:none; gap: 10px;">
+            <div id="battle-controls" style="display:none; gap: 10px; flex-direction: column;">
                 <button id="power-btn" class="game-button" style="background:#ccac00">パワー注入</button>
                 <button id="end-turn-btn" class="game-button">ターン終了</button>
             </div>
@@ -133,7 +135,7 @@ function render() {
         oppHandEl.appendChild(back);
     }
 
-    document.getElementById('ply-status').innerHTML = `パワー: ${state.player.power}`;
+    document.getElementById('player-power-display').innerHTML = `パワー: ${state.player.power}`;
 }
 
 function renderField(id, field, isOpponent) {
