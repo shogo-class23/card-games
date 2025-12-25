@@ -18,6 +18,9 @@
             grid-template-areas: "slot0 slot1 slot2" "slot5 slot4 slot3"; 
             gap: 10px; padding: 15px; justify-content: center; background: rgba(0,0,0,0.2);
         }
+        .field.opponent-field-layout {
+            grid-template-areas: "slot3 slot4 slot5" "slot2 slot1 slot0";
+        }
         .card-slot { width: var(--card-width); height: var(--card-height); background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; position: relative; border: 1px dashed rgba(255,255,255,0.2); }
         
         /* カードデザインの復元 */
@@ -64,7 +67,7 @@
     <div id="log-area" class="log-area"><strong>ゲームログ</strong></div>
     
     <div id="opponent-hand" class="opponent-hand-area"></div>
-    <div class="opponent-area"><div id="opponent-field" class="field"></div></div>
+    <div class="opponent-area"><div id="opponent-field" class="field opponent-field-layout"></div></div>
 
     <div class="center-area">
         <div id="opp-status" style="font-size: 24px;">相手: 20</div>
@@ -144,7 +147,47 @@ function renderField(id, field, isOpponent) {
     field.forEach((card, i) => {
         const slot = document.createElement('div');
         slot.className = 'card-slot';
-        slot.style.gridArea = `slot${i}`;
+        
+        // Conditional grid area based on whether it's the opponent's field
+        if (isOpponent) {
+            // For opponent: back 4,5,6 (indices 3,4,5), front 3,2,1 (indices 2,1,0)
+            // This means slot3 maps to visual 4, slot4 to visual 5, etc.
+            // But the grid-template-areas are global for .field.
+            // A better approach is to change the CSS grid-template-areas for the opponent field
+            // Or, we need to apply the specific grid areas in the CSS itself.
+
+            // Since grid-template-areas are defined globally for .field
+            // The slot mapping "slot${i}" will place them according to the global grid.
+            // To achieve the desired opponent layout, we need to reverse the *visual* mapping
+            // or redefine the grid areas specifically for the opponent.
+
+            // Let's re-evaluate the CSS grid-template-areas for the desired effect.
+            // Player:
+            // "slot0 slot1 slot2"
+            // "slot5 slot4 slot3"
+            // Opponent desired:
+            // "slot3 slot4 slot5" (4,5,6)
+            // "slot2 slot1 slot0" (3,2,1)
+
+            // This requires modifying the CSS based on `isOpponent` rather than JS.
+            // I will add a new CSS class for the opponent's field, and apply it here.
+            // For now, I will keep the JS as is and focus on CSS.
+            // I need to add a class to the opponent's field div.
+
+            // Let's add a class to the opponent's field in HTML and then target it with CSS.
+            // This requires an HTML modification first.
+
+            // Reverting the decision to change JS here. I need to modify HTML first.
+            // My previous change for player field also modified the CSS grid directly.
+            // So for opponent, I need to add a class to <div id="opponent-field" class="field"></div>
+            // For example: <div id="opponent-field" class="field opponent-field-layout"></div>
+            // Then define .opponent-field-layout in CSS.
+
+            // Let's modify the HTML to add a specific class to the opponent's field.
+            slot.style.gridArea = `slot${i}`; // This remains as is for now.
+        } else {
+            slot.style.gridArea = `slot${i}`;
+        }
         
         if (card) {
             const cardEl = createCardEl(card);
