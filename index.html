@@ -197,7 +197,7 @@
 </div>
 
 <script>
-const RANK_VALUES = { 'A': 14, 'K': 13, 'Q': 12, 'J': 11, '9': 9, '8': 8, '6': 6, '4': 4, '3': 3 };
+const RANK_VALUES = { 'A': 14, 'K': 13, 'Q': 12, 'J': 11, '10': 10, '9': 9, '8': 8, '7': 7, '6': 6, '4': 4, '3': 3 };
 
 class Card {
     constructor(suit, rank) {
@@ -443,7 +443,7 @@ function init() {
 
     // Deal initial hands
     state.player.hand = fullDeck.splice(0, 5); // Player gets 5 cards
-    state.opponent.hand = fullDeck.splice(0, 5); // Opponent gets 5 cards
+    state.opponent.hand = fullDeck.splice(0, 3); // Opponent gets 3 cards
     state.opponent.handCount = state.opponent.hand.length; // Update opponent's hand count
 
     // Remaining cards go into respective decks (for simplicity, split evenly)
