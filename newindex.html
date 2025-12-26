@@ -383,7 +383,7 @@ function handleAttack(targetCard) {
         return;
     }
     
-    const totalAtk = attacker.value + attacker.attachedPower;
+    const totalAtk = attacker.value;
     targetCard.hp -= totalAtk;
     state.player.attackedIds.push(attacker.id);
     
@@ -444,33 +444,31 @@ function opponentAI() {
 
     // Opponent attacks
     cardsOnOpponentField.forEach(oppCard => {
-        if (oppCard && oppCard.attachedPower >= oppCard.requiredPower) { // Check power requirement
-            const totalOppAtk = oppCard.value + oppCard.attachedPower;
-            // Filter player's front row cards (indices 0, 1, 2)
-            const playerFrontRowCards = [state.player.field[0], state.player.field[1], state.player.field[2]].filter(p => p !== null);
+            if (oppCard && oppCard.attachedPower >= oppCard.requiredPower) { // Check power requirement
+                const totalOppAtk = oppCard.value; // Now only uses card's value for attack
+                const playerFrontRowCards = [state.player.field[0], state.player.field[1], state.player.field[2]].filter(p => p !== null);
 
-            if (playerFrontRowCards.length > 0) {
-                // Attack player's first available front row card
-                const targetCard = playerFrontRowCards[0];
-                targetCard.hp -= totalOppAtk;
-                addLog(`相手の【${oppCard.rank}】があなたの【${targetCard.rank}】に ${totalOppAtk} ダメージ与えたぴょん！`);
-                if (targetCard.hp <= 0) {
-                    const idx = state.player.field.indexOf(targetCard);
-                    if (idx !== -1) {
-                        state.player.field[idx] = null;
-                        state.player.grave++;
-                        // Player loses HP if a card is destroyed (as per prev logic)
-                        addLog(`あなたの【${targetCard.rank}】は撃破されたぴょん！`);
+                if (playerFrontRowCards.length > 0) {
+                    // Attack player's first available front row card
+                    const targetCard = playerFrontRowCards[0];
+                    targetCard.hp -= totalOppAtk;
+                    addLog(`相手の【${oppCard.rank}】があなたの【${targetCard.rank}】に ${totalOppAtk} ダメージ与えたぴょん！`);
+                    if (targetCard.hp <= 0) {
+                        const idx = state.player.field.indexOf(targetCard);
+                        if (idx !== -1) {
+                            state.player.field[idx] = null;
+                            state.player.grave++;
+                            addLog(`あなたの【${targetCard.rank}】は撃破されたぴょん！`);
+                        }
                     }
+                } else {
+                    // If no player front row cards, direct attack player
+                    state.player.hp -= totalOppAtk;
+                    addLog(`相手の【${oppCard.rank}】があなたに直接 ${totalOppAtk} ダメージ与えたぴょん！`);
                 }
-            } else {
-                // If no player front row cards, direct attack player
-                state.player.hp -= totalOppAtk;
-                addLog(`相手の【${oppCard.rank}】があなたに直接 ${totalOppAtk} ダメージ与えたぴょん！`);
+            } else if (oppCard) {
+                addLog(`相手の【${oppCard.rank}】はパワーが足りないので攻撃できなかったぴょん。`);
             }
-        } else if (oppCard) {
-            addLog(`相手の【${oppCard.rank}】はパワーが足りないので攻撃できなかったぴょん。`);
-        }
     });
 
     // End opponent's turn and pass back to player
