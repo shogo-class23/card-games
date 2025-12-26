@@ -379,12 +379,12 @@ function useSupportCard(card) {
     let cardUsed = false;
     switch (card.rank) {
         case '2DRAW':
-            addLog(`【${card.rank}】を使用！カードを2枚引いたぴょん！`);
+            addLog(`【${card.rank}】を使用！カードを2枚引いた。！`);
             for (let i = 0; i < 2; i++) {
                 if (state.player.deck.length > 0) {
                     state.player.hand.push(state.player.deck.shift());
                 } else {
-                    addLog("山札が空だぴょん！");
+                    addLog("山札が空だ。！");
                     break;
                 }
             }
@@ -395,7 +395,7 @@ function useSupportCard(card) {
             cardUsed = true;
             break;
         case 'SKIP':
-            addLog(`【${card.rank}】を使用！相手のターンをスキップするぴょん！`);
+            addLog(`【${card.rank}】を使用！相手のターンをスキップする。！`);
             state.skipOpponentTurn = true; // Set a flag to skip opponent's turn
             cardUsed = true;
             break;
@@ -490,7 +490,7 @@ function renderField(id, field, isOpponent) {
                         handleAttack(card);
                         hideAttackMenu(); // Hide menu after attack attempt
                     } else {
-                        addLog("攻撃には「攻撃」ボタンを押して対象を選択するぴょん！");
+                        addLog("攻撃には「攻撃」ボタンを押して対象を選択する。！");
                     }
                 } else { // Player's own card clicked
                     if (state.isHealing) {
@@ -599,7 +599,7 @@ function handlePowerInject() {
 
 function handleAttack(targetCard) {
     if (state.canPlaceCard || !state.selectedCard || !state.isAttacking) { // Must be in attacking state
-        addLog("攻撃を開始するには、まず自分のカードを選択して「攻撃」ボタンを押してくださいぴょん！");
+        addLog("攻撃を開始するには、まず自分のカードを選択して「攻撃」ボタンを押してください。！");
         return;
     }
     
@@ -615,7 +615,7 @@ function handleAttack(targetCard) {
     // Check if the targetCard is in the opponent's back row (slots 0, 1, 2)
     const targetCardIndex = state.opponent.field.indexOf(targetCard);
     if (targetCardIndex === -1 || targetCardIndex >= 3) { // If not found or in opponent's visual front row (slots 3,4,5)
-        addLog(`【${targetCard.rank}】は攻撃できない位置だぴょん！`);
+        addLog(`【${targetCard.rank}】は攻撃できない位置だ。！`);
         return;
     }
     
@@ -623,12 +623,12 @@ function handleAttack(targetCard) {
     addLog(`【${attacker.rank}】の攻撃を開始！`);
 
     if (attacker.attachedPower < attacker.requiredPower) {
-        addLog(`……パワー不足で攻撃が不発に終わったぴょん。`);
+        addLog(`……パワー不足で攻撃が不発に終わった。。`);
         return;
     }
 
     if (state.player.attackedIds.includes(attacker.id)) {
-        addLog(`【${attacker.rank}】はもうお疲れだぴょん（攻撃済み）。`);
+        addLog(`【${attacker.rank}】はもうお疲れだ。（攻撃済み）。`);
         return;
     }
     
@@ -637,7 +637,7 @@ function handleAttack(targetCard) {
     state.player.attackedIds.push(attacker.id);
     
     // ダメージのログ（ここが大事！）
-    addLog(`相手の【${targetCard.rank}】に ${totalAtk} ダメージ与えたぴょん！`);
+    addLog(`相手の【${targetCard.rank}】に ${totalAtk} ダメージ与えた。！`);
 
     if (targetCard.hp <= 0) {
         const idx = state.opponent.field.indexOf(targetCard);
@@ -646,7 +646,7 @@ function handleAttack(targetCard) {
             state.opponent.grave++;
             state.player.points++; // プレイヤーのポイントを増やす
         }
-        addLog(`★凄まじい音魔法で【${targetCard.rank}】を粉砕したぴょん！`);
+        addLog(`★凄まじい音魔法で【${targetCard.rank}】を粉砕した。！`);
     }
     
     state.selectedCard = null;
@@ -723,7 +723,7 @@ function opponentAI() {
 
     // --- Regular AI Turn ---
     if (state.skipOpponentTurn) {
-        addLog("【SKIP】の効果で相手のターンはスキップされたぴょん！");
+        addLog("【SKIP】の効果で相手のターンはスキップされた。！");
         state.skipOpponentTurn = false;
         // ターンエンド処理を模倣 (ログ、回転、ドロー、ターン変更)
         addLog(`--- (自分: ${state.player.points}/5 | 相手: ${state.opponent.points}/5) ---`);
@@ -742,7 +742,7 @@ function opponentAI() {
         return; // スキップ終了
     }
 
-    addLog("相手の行動を開始したぴょん！");
+    addLog("相手の行動を開始した。！");
 
     // Opponent draws a card
     if (state.opponent.deck.length > 0) {
@@ -770,10 +770,10 @@ function opponentAI() {
             state.opponent.field[emptySlotIndex] = cardToPlay;
             state.opponent.hand = state.opponent.hand.filter(c => c !== cardToPlay);
             state.opponent.handCount = state.opponent.hand.length;
-            addLog(`相手は【${cardToPlay.rank}】を配置したぴょん！`);
+            addLog(`相手は【${cardToPlay.rank}】を配置した。！`);
         }
     } else {
-        addLog(`相手はカードを配置しなかったぴょん。`);
+        addLog(`相手はカードを配置しなかった。。`);
     }
 
     // Opponent tries to power up a card
@@ -781,9 +781,9 @@ function opponentAI() {
     if (cardToPowerUp) {
         cardToPowerUp.attachedPower++;
         state.opponent.power--;
-        addLog(`相手は【${cardToPowerUp.rank}】にパワーを注入したぴょん！ (現在: ${cardToPowerUp.attachedPower}/${cardToPowerUp.requiredPower})`);
+        addLog(`相手は【${cardToPowerUp.rank}】にパワーを注入した。！ (現在: ${cardToPowerUp.attachedPower}/${cardToPowerUp.requiredPower})`);
     } else if (cardsOnOpponentField.length > 0) {
-        addLog(`相手はカードにパワーを注入しなかったぴょん。`);
+        addLog(`相手はカードにパワーを注入しなかった。。`);
     }
 
     // Opponent attacks
@@ -800,7 +800,7 @@ function opponentAI() {
                     // Attack player's first available front row card
                     const targetCard = playerFrontRowCards[0];
                     targetCard.hp -= totalOppAtk;
-                    addLog(`相手の【${oppCard.rank}】があなたの【${targetCard.rank}】に ${totalOppAtk} ダメージ与えたぴょん！`);
+                    addLog(`相手の【${oppCard.rank}】があなたの【${targetCard.rank}】に ${totalOppAtk} ダメージ与えた。！`);
                     opponentAttackedIds.push(oppCard.id); // 攻撃済みとして登録
                     if (targetCard.hp <= 0) {
                         const idx = state.player.field.indexOf(targetCard);
@@ -808,14 +808,14 @@ function opponentAI() {
                             state.player.field[idx] = null;
                             state.player.grave++;
                             state.opponent.points++; // 相手のポイントを増やす
-                            addLog(`あなたの【${targetCard.rank}】は撃破されたぴょん！`);
+                            addLog(`あなたの【${targetCard.rank}】は撃破された。！`);
                         }
                     }
                 } else {
-                    addLog(`相手の【${oppCard.rank}】は攻撃対象がいなかったぴょん！`);
+                    addLog(`相手の【${oppCard.rank}】は攻撃対象がいなかった。！`);
                 }
             } else if (oppCard) { // 攻撃済みチェックの追加
-                addLog(`相手の【${oppCard.rank}】はパワーが足りないので攻撃できなかったぴょん。`);
+                addLog(`相手の【${oppCard.rank}】はパワーが足りないので攻撃できなかった。。`);
             }
     });
 
@@ -1006,13 +1006,13 @@ function initBattle() {
 document.getElementById('menu-attack-btn').onclick = () => {
     if (state.selectedCard) {
         state.isAttacking = true;
-        addLog(`【${state.selectedCard.rank}】で攻撃対象を選択してくださいぴょん！`);
+        addLog(`【${state.selectedCard.rank}】で攻撃対象を選択してください。！`);
         render(); // Rerender to show potential target highlights
     }
 };
 
 document.getElementById('menu-special-btn').onclick = () => {
-    addLog("特別技はまだ実装されていないぴょん！");
+    addLog("特別技はまだ実装されていない。！");
     hideAttackMenu();
     state.selectedCard = null;
     render();
