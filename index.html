@@ -1010,23 +1010,16 @@ function startRoulette() {
             const isPlayer = Math.random() > 0.5;
             state.turn = isPlayer ? 'player' : 'opponent';
             overlay.textContent = isPlayer ? "プレイヤー先攻" : "相手先攻";
-            setTimeout(() => { 
-                overlay.style.display = 'none'; 
-                if (state.turn === 'player') {
-                    // プレイヤー先行: プレイヤーの配置フェーズへ
-                    state.canPlaceCard = true;
-                    state.statusText = "カードを配置してください。";
-                    addLog("あなたが先行です。");
-                    render();
-                } else {
-                    // 相手先行: 相手の初期配置フェーズへ
-                    state.isOpponentInitialPlacement = true;
-                    state.canPlaceCard = false; 
-                    state.statusText = "相手が配置しています...";
-                    addLog("相手が先行です。");
-                    render();
-                    setTimeout(opponentAI, 1000);
-                }
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                // 先行・後攻に関わらず、まず相手の裏向き初期配置フェーズへ
+                state.isOpponentInitialPlacement = true; // 相手の特殊初期配置モードをON
+                state.canPlaceCard = false; // プレイヤーはまだ配置できない
+                state.statusText = "相手が配置しています...";
+                addLog(state.turn === 'player' ? "あなたが先行です。" : "相手が先行です。");
+                render();
+                // 相手の特殊初期配置AIを呼ぶ (opponentAI関数内でプレイヤーの配置フェーズに遷移する)
+                setTimeout(opponentAI, 1000);
             }, 1000);
         }
     }, 100);
