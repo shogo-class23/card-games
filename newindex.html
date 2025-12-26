@@ -149,6 +149,13 @@
         <div class="player-area"><div id="player-field" class="field"></div></div>
         <div id="player-hand" class="player-hand"></div>
     </div>
+
+    <!-- Attack Menu Overlay -->
+    <div id="attack-menu" style="display:none; position:absolute; background:rgba(0,0,0,0.8); border:1px solid yellow; padding:10px; border-radius:5px; flex-direction:column; gap:5px; z-index:1000;">
+        <button class="game-button" id="menu-attack-btn" style="background:#ccac00;">攻撃</button>
+        <button class="game-button" id="menu-special-btn" style="background:#4CAF50;">特別技</button>
+        <button class="game-button" id="menu-cancel-btn" style="background:#888;">キャンセル</button>
+    </div>
 </div>
 
 <script>
@@ -186,7 +193,8 @@ function getInitialState() {
         turn: 'player', 
         statusText: '準備OK',
         canPlaceCard: false, 
-        gameOver: false
+        gameOver: false,
+        isAttacking: false // New state to indicate if player is in attack mode
     };
 }
 
@@ -266,6 +274,7 @@ function addLog(msg) {
 
 function createCardEl(card) {
     const div = document.createElement('div'); div.className = `card ${card.suit}`;
+    div.dataset.cardId = card.id; // Add data-card-id for easier lookup
     if(card.isSupport) {
         div.innerHTML = `<div class="hp-badge">SP</div><div style="font-size:0.9em">${card.rank}</div><div style="font-size:0.8em">${card.suit}</div>`;
     } else {
@@ -274,16 +283,124 @@ function createCardEl(card) {
     return div;
 }
 
+    // Helper to find the DOM element of a card
+    function getCardElement(card) {
+        if (!card) return null;
+        const els = document.querySelectorAll(`[data-card-id="${card.id}"]`); // Use attribute selector for efficiency
+        for (const el of els) {
+            // Check if this is a player's field card (or hand card, if needed)
+            // For menu positioning, we assume it's a field card
+            if (el.closest('#player-field') || el.closest('#player-hand')) { // Check if it's in player area
+                return el;
+            }
+        }
+        return null;
+    }
+
+    // Helper to find the DOM element of a card
+    function getCardElement(card) {
+        if (!card) return null;
+        const els = document.querySelectorAll(`[data-card-id="${card.id}"]`); // Use attribute selector for efficiency
+        for (const el of els) {
+            // Check if this is a player's field card (or hand card, if needed)
+            // For menu positioning, we assume it's a field card
+            if (el.closest('#player-field') || el.closest('#player-hand')) { // Check if it's in player area
+                return el;
+            }
+        }
+        return null;
+    }
+
+    function showAttackMenu(card) {
+        const attackMenu = document.getElementById('attack-menu');
+        const cardEl = getCardElement(card); // Get the actual DOM element for the selected card
+
+        if (cardEl) {
+            const rect = cardEl.getBoundingClientRect();
+            // Position to the right of the card, relative to the game-container
+            const gameContainerRect = document.querySelector('.game-container').getBoundingClientRect();
+            attackMenu.style.left = `${rect.right + 10 - gameContainerRect.left}px`;
+            attackMenu.style.top = `${rect.top - gameContainerRect.top}px`;
+            attackMenu.style.display = 'flex';
+        } else {
+            console.error("Could not find DOM element for selected card:", card);
+        }
+    }
+
+    function hideAttackMenu() {
+        document.getElementById('attack-menu').style.display = 'none';
+        state.isAttacking = false; // Reset attacking state
+    }
+    
+function useSupportCard(card) {
+    if (state.gameOver || state.turn !== 'player') {
+        addLog("サポートカードを使用できません。");
+        return;
+    }
+
+    let cardUsed = false;
+    switch (card.rank) {
+        case '2DRAW':
+            addLog(`【${card.rank}】を使用！カードを2枚引いたぴょん！`);
+            for (let i = 0; i < 2; i++) {
+                if (state.player.deck.length > 0) {
+                    state.player.hand.push(state.player.deck.shift());
+                } else {
+                    addLog("山札が空だぴょん！");
+                    break;
+                }
+            }
+            cardUsed = true;
+            break;
+        case 'HEAL':
+            addLog(`【${card.rank}】を使用！`);
+            // Simple auto-heal player HP by 5
+            const healAmount = 5;
+            state.player.hp = Math.min(20, state.player.hp + healAmount); // Max HP 20
+            addLog(`プレイヤーのHPが${healAmount}回復したぴょん！現在HP: ${state.player.hp}`);
+            cardUsed = true;
+            break;
+        case 'SKIP':
+            addLog(`【${card.rank}】を使用！相手のターンをスキップするぴょん！`);
+            state.skipOpponentTurn = true; // Set a flag to skip opponent's turn
+            cardUsed = true;
+            break;
+    }
+
+    if (cardUsed) {
+        // Remove card from hand and move to graveyard
+        state.player.hand = state.player.hand.filter(c => c !== card);
+        state.player.grave++;
+        state.selectedCard = null; // Deselect
+        render();
+    }
+}
+
 function render() {
     renderField('player-field', state.player.field, false);
     renderField('opponent-field', state.opponent.field, true);
     const handEl = document.getElementById('player-hand'); handEl.innerHTML = '';
     state.player.hand.forEach(card => {
         const el = createCardEl(card);
-        el.onclick = () => { if(!state.gameOver) { state.selectedCard = card; render(); } };
+        el.onclick = () => { 
+            if(!state.gameOver) { 
+                if (card.isSupport) {
+                    useSupportCard(card); // Use support card directly
+                } else {
+                    state.selectedCard = card; // Select unit card for placement or attack
+                    render(); 
+                }
+            } 
+        };
         if (state.selectedCard === card) el.classList.add('selected');
         handEl.appendChild(el);
     });
+
+    // Hide attack menu when rendering if no card is selected
+    if (!state.selectedCard) {
+        hideAttackMenu(); // Ensure menu is hidden if no card is selected
+    }
+    
     const oppHandEl = document.getElementById('opponent-hand'); oppHandEl.innerHTML = '';
     for(let i=0; i<state.opponent.handCount; i++) {
         const back = document.createElement('div'); back.className = 'card back';
@@ -310,13 +427,31 @@ function renderField(id, field, isOpponent) {
         const slot = document.createElement('div'); slot.className = 'card-slot'; slot.style.gridArea = `slot${i}`;
         if (card) {
             const cardEl = createCardEl(card);
+            // Highlight targetable opponent cards when isAttacking is true
+            if (state.isAttacking && isOpponent) {
+                const targetCardIndex = state.opponent.field.indexOf(card);
+                // Opponent field layout is reversed, so "front" to player is opponent's slots 3,4,5
+                // which correspond to visual positions 1,2,3 for the opponent.
+                if (targetCardIndex !== -1 && targetCardIndex >= 3) { // Only highlight front row
+                    cardEl.style.outline = '4px solid red'; // Visual cue for targetable
+                }
+            }
             if (!isOpponent && state.player.attackedIds.includes(card.id)) cardEl.classList.add('attacked');
             if (state.selectedCard === card) cardEl.classList.add('selected');
+
             cardEl.onclick = (e) => {
                 e.stopPropagation();
                 if (state.gameOver) return;
-                if (isOpponent) handleAttack(card);
-                else handleFieldClick(card, i);
+                if (isOpponent) {
+                    if (state.isAttacking) { // Only attack if in attacking state
+                        handleAttack(card);
+                        hideAttackMenu(); // Hide menu after attack attempt
+                    } else {
+                        addLog("攻撃には「攻撃」ボタンを押して対象を選択するぴょん！");
+                    }
+                } else { // Player's own card clicked
+                    handleFieldClick(card, i);
+                }
             };
             slot.appendChild(cardEl);
         } else if (state.canPlaceCard && !isOpponent) {
@@ -337,14 +472,27 @@ function placeCard(i) {
     state.player.field[i] = state.selectedCard;
     state.player.hand = state.player.hand.filter(c => c !== state.selectedCard);
     addLog(`${state.selectedCard.rank}を配置しました。`);
-    state.selectedCard = null; render();
+    state.selectedCard = null;
+    hideAttackMenu(); // Ensure menu is hidden after placing card
+    render();
 }
 
 function handleFieldClick(card, i) {
-    if (state.canPlaceCard) { 
-        state.player.hand.push(card); state.player.field[i] = null; 
+    if (state.canPlaceCard) {
+        state.player.hand.push(card); state.player.field[i] = null;
         addLog(`${card.rank}を手札に戻しました。`);
-    } else { state.selectedCard = card; }
+        hideAttackMenu(); // Hide menu if card is moved
+    } else { // Battle phase
+        if (state.selectedCard === card) { // Deselect if already selected
+            state.selectedCard = null;
+            hideAttackMenu(); // Hide menu if deselected
+        } else {
+            state.selectedCard = card;
+            if (!state.gameOver && state.turn === 'player') { // Only show menu if player's turn and not game over
+                showAttackMenu(card); // Show attack menu near the card
+            }
+        }
+    }
     render();
 }
 
@@ -352,12 +500,17 @@ function handlePowerInject() {
     const c = state.selectedCard;
     if (c && state.player.field.includes(c) && c.attachedPower < c.requiredPower) {
         c.attachedPower++; state.player.powerInjected = true;
-        addLog(`${c.rank}にパワーを注入。`); render();
+        addLog(`${c.rank}にパワーを注入。`);
+        hideAttackMenu(); // Hide menu after power injection
+        render();
     }
 }
 
 function handleAttack(targetCard) {
-    if (state.canPlaceCard || !state.selectedCard) return;
+    if (state.canPlaceCard || !state.selectedCard || !state.isAttacking) { // Must be in attacking state
+        addLog("攻撃を開始するには、まず自分のカードを選択して「攻撃」ボタンを押してくださいぴょん！");
+        return;
+    }
     
     const attacker = state.selectedCard;
 
@@ -546,6 +699,28 @@ function initBattle() {
     showScreen('game-screen'); 
     startRoulette(); 
 }
+
+// Event listeners for attack menu buttons
+document.getElementById('menu-attack-btn').onclick = () => {
+    if (state.selectedCard) {
+        state.isAttacking = true;
+        addLog(`【${state.selectedCard.rank}】で攻撃対象を選択してくださいぴょん！`);
+        render(); // Rerender to show potential target highlights
+    }
+};
+
+document.getElementById('menu-special-btn').onclick = () => {
+    addLog("特別技はまだ実装されていないぴょん！");
+    hideAttackMenu();
+    state.selectedCard = null;
+    render();
+};
+
+document.getElementById('menu-cancel-btn').onclick = () => {
+    hideAttackMenu();
+    state.selectedCard = null;
+    render();
+};
 
 function startRoulette() {
     const overlay = document.getElementById('roulette-overlay'); overlay.style.display = 'flex';
