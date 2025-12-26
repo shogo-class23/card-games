@@ -69,7 +69,7 @@
 <div id="title-screen" class="screen active">
     <h1 style="font-size: 3em; color:var(--accent); text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">Roen Card Game</h1>
     <div class="menu-btn" onclick="showScreen('mode-screen')">ADVENTURE / BATTLE</div>
-    <div class="menu-btn" onclick="openDeckList()">DECK EDITOR (100 Slots)</div>
+    <div class="menu-btn" onclick="openDeckList('edit')">DECK EDITOR (100 Slots)</div>
     <div class="menu-btn" onclick="showScreen('collection-screen')">CARD COLLECTION</div>
     <div class="menu-btn" onclick="showScreen('settings-screen')">GAME SETTINGS</div>
 </div>
@@ -82,13 +82,13 @@
             <div id="pool-grid" class="scroll-grid"></div>
         </div>
         <div style="flex:1; display:flex; flex-direction:column;">
-            <h3>DECK (<span id="deck-count">0</span>/40)</h3>
+            <h3>DECK (<span id="deck-count">0</span>/30)</h3>
             <div id="current-deck-grid" class="scroll-grid"></div>
         </div>
     </div>
     <div style="display:flex; gap:10px; margin-top:10px;">
         <button class="game-button" onclick="saveDeck()">SAVE & EXIT</button>
-        <button class="game-button" style="background:#666" onclick="openDeckList()">CANCEL</button>
+        <button class="game-button" style="background:#666" onclick="openDeckList('edit')">CANCEL</button>
     </div>
 </div>
 
@@ -158,6 +158,13 @@
     </div>
 </div>
 
+
+<div id="game-over-screen" class="screen">
+    <h1 id="game-result-text" style="font-size: 4em; color:var(--accent);"></h1>
+    <div id="game-over-log" style="width: 80%; max-width: 600px; height: 300px; background: rgba(0,0,0,0.7); border: 1px solid #555; overflow-y: auto; padding: 10px; margin-bottom: 20px; font-size: 12px; line-height: 1.5;"></div>
+    <div class="menu-btn" onclick="showScreen('title-screen')">タイトルへ戻る</div>
+</div>
+
 <script>
 const SUITS = ['fire', 'water', 'wind', 'earth'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -176,7 +183,7 @@ class Card {
         this.hp = this.value; this.maxHp = this.value;
         this.attachedPower = 0;
         this.isSupport = (type === 'support' || SUPPORTS.includes(rank));
-        this.requiredPower = this.isSupport ? 0 : (this.value >= 13 ? 3 : this.value >= 9 ? 2 : 1);
+        this.requiredPower = this.isSupport ? 0 : (this.value <= 3) ? 1 : (this.value <= 6) ? 2 : (this.value <= 10) ? 3 : 4;
     }
 }
 
@@ -187,8 +194,8 @@ function getInitialState() {
     return {
         editIdx: 1, 
         editCards: [], 
-        player: { hand: [], field: Array(6).fill(null), deck: [], grave: 0, power: 5, hp: 20, attackedIds: [], powerInjected: false },
-        opponent: { handCount: 5, field: Array(6).fill(null), deck: [], grave: 0, power: 5, hp: 20 },
+        player: { hand: [], field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0, attackedIds: [], powerInjected: false },
+        opponent: { handCount: 5, field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0 },
         selectedCard: null, 
         turn: 'player', 
         statusText: '準備OK',
@@ -201,13 +208,20 @@ function getInitialState() {
 
 // --- 指示されたデッキエディタの魔法 ---
 
-function openDeckList() {
+function openDeckList(purpose = 'edit') {
     const grid = document.getElementById('deck-grid'); grid.innerHTML = '';
     for(let i=1; i<=100; i++) {
         const name = localStorage.getItem(`deck_name_${i}`) || `DECK ${i}`;
         const slot = document.createElement('div'); slot.className = 'slot'; slot.style.width="150px";
         slot.innerHTML = `<div>${name}</div><small>Slot ${i}</small>`;
-        slot.onclick = () => { state.editIdx = i; enterEditor(); };
+        slot.onclick = () => {
+            if (purpose === 'edit') {
+                state.editIdx = i;
+                enterEditor();
+            } else { // purpose === 'battle'
+                startGameWithDeck(i);
+            }
+        };
         grid.appendChild(slot);
     }
     showScreen('deck-list-screen');
@@ -227,10 +241,24 @@ function enterEditor() {
 function createCardUI(c, isPool) {
     const div = createCardEl(c); // ベースのカード表示を利用
     div.onclick = () => {
-        if(isPool) { 
-            if(state.editCards.length < 40) state.editCards.push(new Card(c.suit, c.rank, c.type)); 
+        if(isPool) {
+            if (state.editCards.length >= 30) {
+                alert("デッキは30枚までです。");
+                return;
+            }
+            const count = state.editCards.filter(deckCard => deckCard.suit === c.suit && deckCard.rank === c.rank).length;
+            if (count >= 2) {
+                alert("同じカードは2枚までしか入れられません。");
+                return;
+            }
+            state.editCards.push(new Card(c.suit, c.rank, c.type)); 
         } else { 
-            state.editCards.splice(state.editCards.indexOf(c), 1); 
+            // This part is for removing cards from the deck, which is correct.
+            // Find the specific card instance to remove.
+            const cardIndex = state.editCards.findIndex(deckCard => deckCard.id === c.id);
+            if (cardIndex > -1) {
+                state.editCards.splice(cardIndex, 1);
+            }
         }
         renderEditor();
     };
@@ -244,10 +272,14 @@ function renderEditor() {
 }
 
 function saveDeck() {
+    if (state.editCards.length !== 30) {
+        alert("デッキはちょうど30枚にしてください。現在の枚数: " + state.editCards.length);
+        return;
+    }
     localStorage.setItem(`deck_cards_${state.editIdx}`, JSON.stringify(state.editCards));
     const name = prompt("Name:", localStorage.getItem(`deck_name_${state.editIdx}`) || `DECK ${state.editIdx}`);
     if(name) localStorage.setItem(`deck_name_${state.editIdx}`, name);
-    openDeckList();
+    openDeckList('edit');
 }
 
 // --- 聖域：元のロジックをすべて保持 ---
@@ -383,14 +415,23 @@ function render() {
     state.player.hand.forEach(card => {
         const el = createCardEl(card);
         el.onclick = () => { 
-            if(!state.gameOver) { 
+            if(state.gameOver) return;
+
+            if (state.canPlaceCard) { // --- 配置フェーズ中の処理 ---
                 if (card.isSupport) {
-                    useSupportCard(card); // Use support card directly
+                    addLog("配置中はサポートカードを使用できません。");
                 } else {
-                    state.selectedCard = card; // Select unit card for placement or attack
+                    state.selectedCard = card; // ユニットカードは選択
+                    render();
+                }
+            } else { // --- バトルフェーズ中の処理 ---
+                if (card.isSupport) {
+                    useSupportCard(card); // サポートカードは直接使用
+                } else {
+                    state.selectedCard = card; // ユニットカードは選択
                     render(); 
                 }
-            } 
+            }
         };
         if (state.selectedCard === card) el.classList.add('selected');
         handEl.appendChild(el);
@@ -406,8 +447,8 @@ function render() {
         const back = document.createElement('div'); back.className = 'card back';
         oppHandEl.appendChild(back);
     }
-    document.getElementById('opp-hp').textContent = state.opponent.hp;
-    document.getElementById('ply-hp').textContent = state.player.hp;
+    document.getElementById('opp-hp').textContent = state.opponent.points;
+    document.getElementById('ply-hp').textContent = state.player.points;
     document.getElementById('opp-power-display').textContent = state.opponent.power;
     document.getElementById('ply-power-display').textContent = state.player.power;
     document.getElementById('opp-hand-count').textContent = state.opponent.handCount;
@@ -432,7 +473,7 @@ function renderField(id, field, isOpponent) {
                 const targetCardIndex = state.opponent.field.indexOf(card);
                 // Opponent field layout is reversed, so "front" to player is opponent's slots 3,4,5
                 // which correspond to visual positions 1,2,3 for the opponent.
-                if (targetCardIndex !== -1 && targetCardIndex >= 3) { // Only highlight front row
+                if (targetCardIndex !== -1 && targetCardIndex < 3) { // Only highlight back row
                     cardEl.style.outline = '4px solid red'; // Visual cue for targetable
                 }
             }
@@ -454,26 +495,30 @@ function renderField(id, field, isOpponent) {
                 }
             };
             slot.appendChild(cardEl);
-        } else if (state.canPlaceCard && !isOpponent) {
-            // Only allow placing if no card is selected OR if selected card is not a support card
-            if (!state.selectedCard || !state.selectedCard.isSupport) {
-                slot.onclick = () => placeCard(i);
-            } else {
-                slot.onclick = null; // Disable click for support cards
-            }
+        } else if ((state.canPlaceCard || state.turn === 'player') && !isOpponent) {
+            slot.onclick = () => placeCard(i);
         }
         el.appendChild(slot);
     });
 }
 
 function placeCard(i) {
-    if (!state.selectedCard) return;
-    if (state.selectedCard.isSupport) { addLog("サポートカードは場に出せません。"); return; }
-    state.player.field[i] = state.selectedCard;
-    state.player.hand = state.player.hand.filter(c => c !== state.selectedCard);
-    addLog(`${state.selectedCard.rank}を配置しました。`);
+    if (!state.selectedCard) {
+        addLog("手札から配置したいユニットカードを選択してください。");
+        return;
+    }
+    if (state.selectedCard.isSupport) {
+        addLog("サポートカードは場に出せません。");
+        return;
+    }
+    
+    const cardToPlace = state.selectedCard;
+
+    state.player.field[i] = cardToPlace;
+    state.player.hand = state.player.hand.filter(c => c !== cardToPlace);
+    addLog(`${cardToPlace.rank}を配置しました。`);
     state.selectedCard = null;
-    hideAttackMenu(); // Ensure menu is hidden after placing card
+    hideAttackMenu();
     render();
 }
 
@@ -513,12 +558,17 @@ function handleAttack(targetCard) {
     }
     
     const attacker = state.selectedCard;
+    const attackerIndex = state.player.field.indexOf(attacker);
 
-    // Check if the targetCard is in the opponent's front row (slots 3, 4, 5)
+    // 攻撃者が前衛にいるかチェック
+    if (attackerIndex === -1 || attackerIndex > 2) {
+        addLog("後列のカードでは攻撃できません！");
+        return;
+    }
+
+    // Check if the targetCard is in the opponent's back row (slots 0, 1, 2)
     const targetCardIndex = state.opponent.field.indexOf(targetCard);
-    // Opponent field layout is reversed, so "front" to player is opponent's slots 3,4,5
-    // which correspond to visual positions 1,2,3 for the opponent.
-    if (targetCardIndex === -1 || targetCardIndex < 3) { // If not found or in opponent's visual back row (slots 0,1,2)
+    if (targetCardIndex === -1 || targetCardIndex >= 3) { // If not found or in opponent's visual front row (slots 3,4,5)
         addLog(`【${targetCard.rank}】は攻撃できない位置だぴょん！`);
         return;
     }
@@ -547,7 +597,8 @@ function handleAttack(targetCard) {
         const idx = state.opponent.field.indexOf(targetCard);
         if (idx !== -1) {
             state.opponent.field[idx] = null;
-            state.opponent.graveyard.push(targetCard);
+            state.opponent.grave++;
+            state.player.points++; // プレイヤーのポイントを増やす
         }
         addLog(`★凄まじい音魔法で【${targetCard.rank}】を粉砕したぴょん！`);
     }
@@ -556,16 +607,44 @@ function handleAttack(targetCard) {
     render();
 }
 
-function confirmPlacement() { state.canPlaceCard = false; document.getElementById('status-text').textContent = "自ターン"; render(); }
+function confirmPlacement() { 
+    state.canPlaceCard = false;
+    if (state.turn === 'player') {
+        // プレイヤーのターンから開始
+        document.getElementById('status-text').textContent = "自ターン";
+        addLog("配置完了。あなたのターンを開始します。");
+        render();
+    } else {
+        // 相手のターンから開始
+        document.getElementById('status-text').textContent = "相手ターン";
+        addLog("配置完了。相手のターンを開始します。");
+        render();
+        setTimeout(opponentAI, 1000);
+    }
+}
 
 function handleEndTurn() {
     state.player.powerInjected = false; state.player.attackedIds = [];
     state.turn = 'opponent'; document.getElementById('status-text').textContent = "相手ターン";
-    addLog("ターン終了。"); render(); setTimeout(opponentAI, 1000);
+    addLog("ターン終了。"); 
+    rotateFields();
+    render(); 
+    setTimeout(opponentAI, 1000);
 }
 
 function opponentAI() {
     addLog("相手の行動を開始したぴょん！");
+
+    // Opponent draws a card
+    if (state.opponent.deck.length > 0) {
+        const drawnCard = state.opponent.deck.shift();
+        state.opponent.hand.push(drawnCard);
+        state.opponent.handCount = state.opponent.hand.length;
+        addLog("相手はカードを1枚引いた。");
+    } else {
+        addLog("相手の山札はもうない！");
+    }
+
     const cardsOnOpponentField = state.opponent.field.filter(c => c !== null);
 
     // Opponent tries to play a card from hand
@@ -611,13 +690,13 @@ function opponentAI() {
                         if (idx !== -1) {
                             state.player.field[idx] = null;
                             state.player.grave++;
+                            state.opponent.points++; // 相手のポイントを増やす
                             addLog(`あなたの【${targetCard.rank}】は撃破されたぴょん！`);
                         }
                     }
                 } else {
-                    // If no player front row cards, direct attack player
-                    state.player.hp -= totalOppAtk;
-                    addLog(`相手の【${oppCard.rank}】があなたに直接 ${totalOppAtk} ダメージ与えたぴょん！`);
+                    // If no player front row cards, log it
+                    addLog(`相手の【${oppCard.rank}】は攻撃対象がいなかったぴょん！`);
                 }
             } else if (oppCard) {
                 addLog(`相手の【${oppCard.rank}】はパワーが足りないので攻撃できなかったぴょん。`);
@@ -627,77 +706,152 @@ function opponentAI() {
     // End opponent's turn and pass back to player
     state.opponent.power = 5; // Restore opponent's power
     state.player.powerInjectedThisTurn = false; // Reset player's power injection flag
+    
+    rotateFields();
+
+    // Player draws a card
+    if (state.player.deck.length > 0) {
+        state.player.hand.push(state.player.deck.shift());
+        addLog("あなたはカードを1枚引いた。");
+    } else {
+        addLog("あなたの山札はもうない！");
+    }
+
     state.turn = 'player';
-    state.statusText = "あなたのターンです。";
+    document.getElementById('status-text').textContent = "自ターン";
     addLog("相手のターン終了。あなたのターン開始。");
     render();
     checkWin(); // Check for game over after opponent's turn
 }
 
+function rotateFields() {
+    addLog("フィールドが時計回りに回転します。");
+    // Player's field
+    const pField = state.player.field;
+    if (!pField.every(c => c === null)) {
+        const pLast = pField.pop();
+        pField.unshift(pLast);
+    }
+    // Opponent's field
+    const oField = state.opponent.field;
+    if (!oField.every(c => c === null)) {
+        const oLast = oField.pop();
+        oField.unshift(oLast);
+    }
+}
+
+function showGameOverScreen(result) {
+    if (state.gameOver) return;
+    state.gameOver = true;
+
+    const resultText = document.getElementById('game-result-text');
+    let message = '';
+    switch (result) {
+        case 'win':
+            message = "あなたの勝利！";
+            addLog("★★★★★ あなたの勝利です！ ★★★★★");
+            break;
+        case 'lose':
+            message = "あなたの敗北...";
+            addLog("------- あなたの敗北です... -------");
+            break;
+        case 'draw':
+            message = "引き分け";
+            addLog("======= 引き分けです ========");
+            break;
+    }
+    resultText.textContent = message;
+
+    // Display game log on the game over screen
+    const gameLog = document.getElementById('log-area').innerHTML;
+    document.getElementById('game-over-log').innerHTML = gameLog;
+
+    showScreen('game-over-screen');
+}
+
 function checkWin() {
-    const playerHasCards = state.player.hand.length > 0 || state.player.field.some(c => c !== null) || state.player.deck.length > 0;
-    const opponentHasCards = state.opponent.handCount > 0 || state.opponent.field.some(c => c !== null) || state.opponent.deck.length > 0;
+    if (state.gameOver || state.canPlaceCard) return; // ゲーム中のみ判定
 
-    if (state.gameOver) return; // Already game over
+    const playerHasFieldCards = state.player.field.some(c => c !== null);
+    const opponentHasFieldCards = state.opponent.field.some(c => c !== null);
 
-    if (state.opponent.hp <= 0 || !opponentHasCards) {
-        state.gameOver = true;
-        addLog("プレイヤーの勝利！おめでとうぴょん！");
-        document.getElementById('status-text').textContent = "プレイヤーの勝利！"; // Update status text
-        alert("YOU WIN! おめでとうぴょん！");
-        showScreen('title-screen');
+    // 優先1: 場のカードでの決着
+    if (!playerHasFieldCards && !opponentHasFieldCards) {
+        showGameOverScreen('draw');
+        return;
+    }
+    if (!opponentHasFieldCards) {
+        showGameOverScreen('win');
+        return;
+    }
+    if (!playerHasFieldCards) {
+        showGameOverScreen('lose');
         return;
     }
 
-    if (state.player.hp <= 0 || !playerHasCards) {
-        state.gameOver = true;
-        addLog("プレイヤーの敗北...残念だったぴょん。");
-        document.getElementById('status-text').textContent = "プレイヤーの敗北..."; // Update status text
-        alert("YOU LOSE... 残念だったぴょん。");
-        showScreen('title-screen');
+    // 優先2: ポイントでの決着
+    const playerWinsByPoints = state.player.points >= 5;
+    const opponentWinsByPoints = state.opponent.points >= 5;
+
+    if (playerWinsByPoints && opponentWinsByPoints) {
+        showGameOverScreen('draw');
+        return;
+    }
+    if (playerWinsByPoints) {
+        showGameOverScreen('win');
+        return;
+    }
+    if (opponentWinsByPoints) {
+        showGameOverScreen('lose');
         return;
     }
 }
 
-function initBattle() {
+function startGameWithDeck(deckId) {
+    const savedDeck = localStorage.getItem(`deck_cards_${deckId}`);
+    if (!savedDeck) {
+        alert("このスロットにはデッキが保存されていません。");
+        return;
+    }
+    const parsedDeck = JSON.parse(savedDeck);
+    if (parsedDeck.length !== 30) {
+        alert(`このデッキは30枚ではありません。(現在: ${parsedDeck.length}枚)`);
+        return;
+    }
+
     state = getInitialState(); // Reset all state variables
-    // Init decks and hands
-    const suits = ['fire', 'water', 'wind', 'earth'];
-    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']; 
-    const totalDeckSize = 30; 
 
-    let fullDeck = [];
-    suits.forEach(suit => {
-        ranks.forEach(rank => {
-            fullDeck.push(new Card(suit, rank));
-        });
-        SUPPORTS.forEach(a => fullDeck.push(new Card(suit, a, 'support'))); // Add support cards to fullDeck
-    });
-
-    fullDeck = fullDeck.slice(0, totalDeckSize);
-
-    for (let i = fullDeck.length - 1; i > 0; i--) {
+    // 1. Player's deck setup
+    let playerDeck = parsedDeck.map(d => Object.assign(new Card(), d));
+    // Shuffle player's deck
+    for (let i = playerDeck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [fullDeck[i], fullDeck[j]] = [fullDeck[j], fullDeck[i]];
+        [playerDeck[i], playerDeck[j]] = [playerDeck[j], playerDeck[i]];
     }
+    state.player.deck = playerDeck;
+    state.player.hand = state.player.deck.splice(0, 5);
 
-    state.player.hand = fullDeck.splice(0, 5); 
-    state.opponent.hand = fullDeck.splice(0, 2); 
-    state.opponent.handCount = state.opponent.hand.length; 
-
-    state.player.deck = fullDeck.splice(0, Math.floor(fullDeck.length / 2));
-    state.opponent.deck = fullDeck; 
-    
-    // Place some initial cards for opponent on field for testing purposes
-    for(let i=0; i<3; i++) {
-        if (state.opponent.deck.length > 0) {
-            const oppCard = state.opponent.deck.shift();
-            state.opponent.field[i] = oppCard;
-        }
+    // 2. Opponent's deck setup (Random)
+    let opponentFullDeck = [];
+    SUITS.forEach(suit => {
+        RANKS.forEach(rank => opponentFullDeck.push(new Card(suit, rank)));
+        SUPPORTS.forEach(a => opponentFullDeck.push(new Card(suit, a, 'support')));
+    });
+     for (let i = opponentFullDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [opponentFullDeck[i], opponentFullDeck[j]] = [opponentFullDeck[j], opponentFullDeck[i]];
     }
-    
-    showScreen('game-screen'); 
-    startRoulette(); 
+    state.opponent.deck = opponentFullDeck.slice(0, 30); // Take 30 cards for the deck
+    state.opponent.hand = state.opponent.deck.splice(0, 2);
+    state.opponent.handCount = state.opponent.hand.length;
+
+    // 3. Start Game
+    showScreen('game-screen');
+    startRoulette();
+}
+
+function initBattle() {
+    openDeckList('battle');
 }
 
 // Event listeners for attack menu buttons
@@ -734,16 +888,11 @@ function startRoulette() {
             overlay.textContent = isPlayer ? "プレイヤー先攻" : "相手先攻";
             setTimeout(() => { 
                 overlay.style.display = 'none'; 
-                if (state.turn === 'player') {
-                    state.canPlaceCard = true; // Player can place cards
-                    state.statusText = "カードを配置してください。";
-                    render(); // Render after setting state
-                } else {
-                    state.canPlaceCard = false; // Opponent's turn, player cannot place
-                    state.statusText = "相手のターンです...";
-                    render(); // Render after setting state
-                    setTimeout(opponentAI, 1000); // Start opponent's turn after a delay
-                }
+                // 先行・後攻に関わらず、まずプレイヤーが配置フェーズに入る
+                state.canPlaceCard = true;
+                state.statusText = "カードを配置してください。";
+                addLog(state.turn === 'player' ? "あなたが先行です。" : "相手が先行です。");
+                render();
             }, 1000);
         }
     }, 100);
