@@ -340,18 +340,42 @@ function handlePowerInject() {
     }
 }
 
-function handleAttack(target) {
-    if (state.turn !== 'player' || !state.selectedCard || state.player.attackedIds.includes(state.selectedCard.id)) return;
-    const atk = state.selectedCard;
-    if (atk.attachedPower < atk.requiredPower) { addLog("パワー不足！"); return; }
-    target.hp -= (atk.value + atk.attachedPower);
-    state.player.attackedIds.push(atk.id);
-    addLog(`${atk.rank}の攻撃！`);
-    if (target.hp <= 0) { 
-        state.opponent.field[state.opponent.field.indexOf(target)] = null; 
-        state.opponent.grave++; addLog("敵破砕！"); 
+function handleAttack(targetCard) {
+    if (state.canPlaceCard || !state.selectedCard) return;
+    
+    const attacker = state.selectedCard;
+    
+    // 攻撃前のログ
+    addLog(`【${attacker.rank}】の攻撃を開始！`);
+
+    if (attacker.attachedPower < attacker.requiredPower) {
+        addLog(`……パワー不足で攻撃が不発に終わったぴょん。`);
+        return;
     }
-    state.selectedCard = null; render(); checkWin();
+
+    if (state.player.attackedIds.includes(attacker.id)) {
+        addLog(`【${attacker.rank}】はもうお疲れだぴょん（攻撃済み）。`);
+        return;
+    }
+    
+    const totalAtk = attacker.value + attacker.attachedPower;
+    targetCard.hp -= totalAtk;
+    state.player.attackedIds.push(attacker.id);
+    
+    // ダメージのログ（ここが大事！）
+    addLog(`相手の【${targetCard.rank}】に ${totalAtk} ダメージ与えたぴょん！`);
+
+    if (targetCard.hp <= 0) {
+        const idx = state.opponent.field.indexOf(targetCard);
+        if (idx !== -1) {
+            state.opponent.field[idx] = null;
+            state.opponent.graveyard.push(targetCard);
+        }
+        addLog(`★凄まじい音魔法で【${targetCard.rank}】を粉砕したぴょん！`);
+    }
+    
+    state.selectedCard = null;
+    render();
 }
 
 function confirmPlacement() { state.canPlaceCard = false; document.getElementById('status-text').textContent = "自ターン"; render(); }
