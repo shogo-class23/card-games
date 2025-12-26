@@ -173,12 +173,23 @@ class Card {
     }
 }
 
-let state = {
-    editIdx: 1, editCards: [],
-    player: { hand: [], field: Array(6).fill(null), deck: 22, grave: 0, power: 5, hp: 20, attackedIds: [], powerInjected: false },
-    opponent: { handCount: 5, field: Array(6).fill(null), deck: 22, grave: 0, power: 5, hp: 20 },
-    selectedCard: null, turn: 'player', canPlaceCard: true, gameOver: false
-};
+let state = getInitialState(); // Initialize state when script loads
+
+// Function to get the initial game state
+function getInitialState() {
+    return {
+        editIdx: 1, 
+        editCards: [], 
+        player: { hand: [], field: Array(6).fill(null), deck: [], grave: 0, power: 5, hp: 20, attackedIds: [], powerInjected: false },
+        opponent: { handCount: 5, field: Array(6).fill(null), deck: [], grave: 0, power: 5, hp: 20 },
+        selectedCard: null, 
+        turn: 'player', 
+        statusText: '準備OK',
+        canPlaceCard: false, 
+        gameOver: false
+    };
+}
+
 
 // --- 指示されたデッキエディタの魔法 ---
 
@@ -387,17 +398,73 @@ function handleEndTurn() {
 }
 
 function opponentAI() {
-    addLog("相手の行動...");
-    const cards = state.opponent.field.filter(c => c !== null);
-    if (cards.length > 0) {
-        const c = cards[0]; if (c.attachedPower < c.requiredPower) c.attachedPower++;
-        const targets = state.player.field.filter(p => p !== null);
-        if (targets.length > 0) {
-            targets[0].hp -= (c.value + c.attachedPower);
-            if (targets[0].hp <= 0) { state.player.field[state.player.field.indexOf(targets[0])] = null; state.player.grave++; }
-        } else { state.player.hp--; }
+    addLog("相手の行動を開始したぴょん！");
+    const cardsOnOpponentField = state.opponent.field.filter(c => c !== null);
+
+    // Opponent tries to play a card from hand
+    const playableCardInHand = state.opponent.hand.find(card =>
+        state.opponent.field.includes(null) && card.requiredPower <= state.opponent.power
+    );
+    if (playableCardInHand) {
+        const emptySlotIndex = state.opponent.field.indexOf(null);
+        if (emptySlotIndex !== -1) {
+            state.opponent.field[emptySlotIndex] = playableCardInHand;
+            state.opponent.hand = state.opponent.hand.filter(c => c !== playableCardInHand); // Remove from hand
+            state.opponent.handCount = state.opponent.hand.length;
+            state.opponent.power -= playableCardInHand.requiredPower;
+            addLog(`相手は【${playableCardInHand.rank}】を配置したぴょん！`);
+        }
+    } else {
+        addLog(`相手はカードを配置しなかったぴょん。`);
     }
-    state.turn = 'player'; document.getElementById('status-text').textContent = "自ターン"; render();
+
+    // Opponent tries to power up a card
+    const cardToPowerUp = cardsOnOpponentField.find(c => c.attachedPower < c.requiredPower && state.opponent.power > 0);
+    if (cardToPowerUp) {
+        cardToPowerUp.attachedPower++;
+        state.opponent.power--;
+        addLog(`相手は【${cardToPowerUp.rank}】にパワーを注入したぴょん！ (現在: ${cardToPowerUp.attachedPower}/${cardToPowerUp.requiredPower})`);
+    } else if (cardsOnOpponentField.length > 0) {
+        addLog(`相手はカードにパワーを注入しなかったぴょん。`);
+    }
+
+    // Opponent attacks
+    cardsOnOpponentField.forEach(oppCard => {
+        if (oppCard && oppCard.attachedPower >= oppCard.requiredPower) { // Check power requirement
+            const totalOppAtk = oppCard.value + oppCard.attachedPower;
+            const playerFieldCards = state.player.field.filter(p => p !== null);
+
+            if (playerFieldCards.length > 0) {
+                // Attack player's first field card (Simplistic AI: attack first available)
+                const targetCard = playerFieldCards[0];
+                targetCard.hp -= totalOppAtk;
+                addLog(`相手の【${oppCard.rank}】があなたの【${targetCard.rank}】に ${totalOppAtk} ダメージ与えたぴょん！`);
+                if (targetCard.hp <= 0) {
+                    const idx = state.player.field.indexOf(targetCard);
+                    if (idx !== -1) {
+                        state.player.field[idx] = null;
+                        state.player.grave++;
+                        state.player.hp--; // Player loses HP if a card is destroyed (as per prev logic)
+                        addLog(`あなたの【${targetCard.rank}】は撃破されたぴょん！`);
+                    }
+                }
+            } else {
+                // If no player field cards, direct attack player
+                state.player.hp -= totalOppAtk;
+                addLog(`相手の【${oppCard.rank}】があなたに直接 ${totalOppAtk} ダメージ与えたぴょん！`);
+            }
+        } else if (oppCard) {
+            addLog(`相手の【${oppCard.rank}】はパワーが足りないので攻撃できなかったぴょん。`);
+        }
+    });
+
+    // End opponent's turn and pass back to player
+    state.opponent.power = 5; // Restore opponent's power
+    state.player.powerInjectedThisTurn = false; // Reset player's power injection flag
+    state.turn = 'player';
+    state.statusText = "あなたのターンです。";
+    addLog("相手のターン終了。あなたのターン開始。");
+    render();
     checkWin(); // Check for game over after opponent's turn
 }
 
@@ -427,12 +494,44 @@ function checkWin() {
 }
 
 function initBattle() {
-    state.player = { hand: [], field: Array(6).fill(null), deck: 22, grave: 0, power: 5, hp: 20, attackedIds: [], powerInjected: false };
-    state.opponent = { handCount: 5, field: Array(6).fill(null), deck: 22, grave: 0, power: 5, hp: 20 };
-    state.selectedCard = null; state.turn = 'player'; state.canPlaceCard = true; state.gameOver = false;
-    for(let i=0; i<8; i++) state.player.hand.push(new Card(SUITS[i%4], RANKS[Math.floor(Math.random()*RANKS.length)]));
-    for(let i=0; i<3; i++) state.opponent.field[i] = new Card(SUITS[(i+2)%4], RANKS[Math.floor(Math.random()*RANKS.length)]);
-    showScreen('game-screen'); startRoulette();
+    state = getInitialState(); // Reset all state variables
+    // Init decks and hands
+    const suits = ['fire', 'water', 'wind', 'earth'];
+    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']; 
+    const totalDeckSize = 30; 
+
+    let fullDeck = [];
+    suits.forEach(suit => {
+        ranks.forEach(rank => {
+            fullDeck.push(new Card(suit, rank));
+        });
+        SUPPORTS.forEach(a => fullDeck.push(new Card(suit, a, 'support'))); // Add support cards to fullDeck
+    });
+
+    fullDeck = fullDeck.slice(0, totalDeckSize);
+
+    for (let i = fullDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [fullDeck[i], fullDeck[j]] = [fullDeck[j], fullDeck[i]];
+    }
+
+    state.player.hand = fullDeck.splice(0, 5); 
+    state.opponent.hand = fullDeck.splice(0, 2); 
+    state.opponent.handCount = state.opponent.hand.length; 
+
+    state.player.deck = fullDeck.splice(0, Math.floor(fullDeck.length / 2));
+    state.opponent.deck = fullDeck; 
+    
+    // Place some initial cards for opponent on field for testing purposes
+    for(let i=0; i<3; i++) {
+        if (state.opponent.deck.length > 0) {
+            const oppCard = state.opponent.deck.shift();
+            state.opponent.field[i] = oppCard;
+        }
+    }
+    
+    showScreen('game-screen'); 
+    startRoulette(); 
 }
 
 function startRoulette() {
@@ -445,7 +544,19 @@ function startRoulette() {
             const isPlayer = Math.random() > 0.5;
             state.turn = isPlayer ? 'player' : 'opponent';
             overlay.textContent = isPlayer ? "プレイヤー先攻" : "相手先攻";
-            setTimeout(() => { overlay.style.display = 'none'; render(); }, 1000);
+            setTimeout(() => { 
+                overlay.style.display = 'none'; 
+                if (state.turn === 'player') {
+                    state.canPlaceCard = true; // Player can place cards
+                    state.statusText = "カードを配置してください。";
+                    render(); // Render after setting state
+                } else {
+                    state.canPlaceCard = false; // Opponent's turn, player cannot place
+                    state.statusText = "相手のターンです...";
+                    render(); // Render after setting state
+                    setTimeout(opponentAI, 1000); // Start opponent's turn after a delay
+                }
+            }, 1000);
         }
     }, 100);
 }
