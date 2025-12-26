@@ -540,37 +540,13 @@ function healCard(targetCard) {
     render();
 }
 
-function healCard(targetCard) {
-    if (!targetCard || targetCard.isSupport) {
-        addLog("ユニットカードのみ回復できます。");
-        return;
-    }
-    targetCard.hp = Math.min(targetCard.maxHp, targetCard.hp + 3);
-    addLog(`【${targetCard.rank}】のHPが3回復した！ (現在HP: ${targetCard.hp})`);
-    
-    state.isHealing = false; // 回復モードを終了
-    render();
-}
-
-function healCard(targetCard) {
-    if (!targetCard || targetCard.isSupport) {
-        addLog("ユニットカードのみ回復できます。");
-        return;
-    }
-    targetCard.hp = Math.min(targetCard.maxHp, targetCard.hp + 3);
-    addLog(`【${targetCard.rank}】のHPが3回復した！ (現在HP: ${targetCard.hp})`);
-    
-    state.isHealing = false; // 回復モードを終了
-    render();
-}
-
 function handleFieldClick(card, i) {
     if (state.canPlaceCard) {
         state.player.hand.push(card); state.player.field[i] = null;
         addLog(`${card.rank}を手札に戻しました。`);
         hideAttackMenu(); // Hide menu if card is moved
     } else { // Battle phase
-        if (state.isHealing) {
+        if (state.isHealing) { // If in healing mode, heal the card.
             healCard(card);
             return;
         }
