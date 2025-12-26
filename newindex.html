@@ -398,11 +398,32 @@ function opponentAI() {
         } else { state.player.hp--; }
     }
     state.turn = 'player'; document.getElementById('status-text').textContent = "自ターン"; render();
+    checkWin(); // Check for game over after opponent's turn
 }
 
 function checkWin() {
-    if (state.opponent.hp <= 0) { alert("YOU WIN!"); showScreen('title-screen'); }
-    if (state.player.hp <= 0) { alert("YOU LOSE..."); showScreen('title-screen'); }
+    const playerHasCards = state.player.hand.length > 0 || state.player.field.some(c => c !== null) || state.player.deck.length > 0;
+    const opponentHasCards = state.opponent.handCount > 0 || state.opponent.field.some(c => c !== null) || state.opponent.deck.length > 0;
+
+    if (state.gameOver) return; // Already game over
+
+    if (state.opponent.hp <= 0 || !opponentHasCards) {
+        state.gameOver = true;
+        addLog("プレイヤーの勝利！おめでとうぴょん！");
+        document.getElementById('status-text').textContent = "プレイヤーの勝利！"; // Update status text
+        alert("YOU WIN! おめでとうぴょん！");
+        showScreen('title-screen');
+        return;
+    }
+
+    if (state.player.hp <= 0 || !playerHasCards) {
+        state.gameOver = true;
+        addLog("プレイヤーの敗北...残念だったぴょん。");
+        document.getElementById('status-text').textContent = "プレイヤーの敗北..."; // Update status text
+        alert("YOU LOSE... 残念だったぴょん。");
+        showScreen('title-screen');
+        return;
+    }
 }
 
 function initBattle() {
