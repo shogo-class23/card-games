@@ -172,12 +172,12 @@
         <div class="center-controls">
             <div id="status-text" class="status-text">準備OK</div>
             <div id="controls">
-                <button id="ok-btn" class="game-button">配置OK</button>
-                <div id="battle-controls" style="display:none; flex-direction: column; gap: 10px; align-items: center;">
-                    <button id="power-btn" class="game-button" style="background:#ccac00">パワー</button>
-                    <button id="end-turn-btn" class="game-button">ターン終了</button>
-                </div>
-            </div>
+                            <button id="ok-btn" class="game-button">配置OK</button>
+                            <div id="battle-controls" style="display:none; flex-direction: column; gap: 10px; align-items: center;">
+                                <button id="power-btn" class="game-button" style="background:#ccac00">パワー</button>
+                                <button id="end-turn-btn" class="game-button">ターン終了</button>
+                                <button id="restart-btn" class="game-button" style="background:#888; display:none;">リスタート</button>
+                            </div>            </div>
             <div id="game-status" class="game-status"></div>
         </div>
         <div class="score-display player-score" id="ply-score-display">HP: <span id="ply-hp-value">0</span></div>
@@ -213,14 +213,20 @@ class Card {
     }
 }
 
-const state = {
-    player: { hand: [], field: Array(6).fill(null), attackedIds: [], power: 5, hp: 20, deck: [], graveyard: [], powerInjectedThisTurn: false },
-    opponent: { handCount: 5, field: Array(6).fill(null), power: 5, hp: 20, deck: [], graveyard: [] },
-    selectedCard: null,
-    turn: 'player',
-    statusText: '準備OK',
-    canPlaceCard: true // New state to manage card placement phase
-};
+// Function to get the initial game state
+function getInitialState() {
+    return {
+        player: { hand: [], field: Array(6).fill(null), attackedIds: [], power: 5, hp: 20, deck: [], graveyard: [], powerInjectedThisTurn: false },
+        opponent: { handCount: 2, field: Array(6).fill(null), power: 5, hp: 20, deck: [], graveyard: [] },
+        selectedCard: null,
+        turn: 'player',
+        statusText: '準備OK',
+        canPlaceCard: true, // New state to manage card placement phase
+        gameEnd: false // New state to track if the game has ended
+    };
+}
+
+let state = getInitialState(); // Initialize state when script loads
 
 function addLog(msg) {
     const log = document.getElementById('log-area');
@@ -303,13 +309,30 @@ function render() {
     document.getElementById('opp-hp-value').textContent = state.opponent.hp;
     document.getElementById('ply-hp-value').textContent = state.player.hp;
 
-    // Show/hide OK button and battle controls
-    if (state.canPlaceCard) {
+    // Check for game over
+    if (state.player.hp <= 0) {
+        state.gameEnd = true;
+        state.statusText = "ゲームオーバー！あなたの負けです。";
+        addLog("ゲーム終了: プレイヤーの敗北");
+    } else if (state.opponent.hp <= 0) {
+        state.gameEnd = true;
+        state.statusText = "ゲームクリア！あなたの勝ちです。";
+        addLog("ゲーム終了: プレイヤーの勝利");
+    }
+
+    // Show/hide OK button, battle controls, and restart button based on game state
+    if (state.gameEnd) {
+        document.getElementById('ok-btn').style.display = 'none';
+        document.getElementById('battle-controls').style.display = 'none';
+        document.getElementById('restart-btn').style.display = 'block';
+    } else if (state.canPlaceCard) {
         document.getElementById('ok-btn').style.display = 'block';
         document.getElementById('battle-controls').style.display = 'none';
+        document.getElementById('restart-btn').style.display = 'none';
     } else {
         document.getElementById('ok-btn').style.display = 'none';
         document.getElementById('battle-controls').style.display = 'flex'; // This is now a column
+        document.getElementById('restart-btn').style.display = 'none';
     }
 }
 
@@ -518,6 +541,16 @@ document.getElementById('end-turn-btn').onclick = () => {
     setTimeout(opponentTurn, 1000); // Wait 1 second before opponent's turn
 };
 
+document.getElementById('restart-btn').onclick = () => {
+    resetGame();
+};
+
+function resetGame() {
+    state = getInitialState(); // Reset all state variables
+    init(); // Re-initialize the game
+    addLog("ゲームをリスタートしました。");
+}
+
 function opponentTurn() {
     state.turn = 'opponent';
     state.statusText = "相手のターンです...";
@@ -588,6 +621,7 @@ function opponentTurn() {
 
         // End opponent's turn and pass back to player
         state.opponent.power = 5; // Restore opponent's power
+        state.player.powerInjectedThisTurn = false; // Reset player's power injection flag
         state.turn = 'player';
         state.statusText = "あなたのターンです。";
         addLog("あなたのターン開始");
