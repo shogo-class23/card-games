@@ -37,6 +37,39 @@
         .card.water { background-color: var(--water-color); }
         .card.wind { background-color: var(--wind-color); }
         .card.earth { background-color: var(--earth-color); }
+        /* Thematic Colors for Cards */
+        .color-light { background-color: #FFFF00; } /* Yellow */
+        .color-dark { background-color: #333333; } /* Black */
+        .color-fire { background-color: #FF0000; } /* Red */
+        .color-water { background-color: #0000FF; } /* Blue */
+        .color-land { background-color: #8B4513; } /* Brown */
+        .color-wind { background-color: #00FF00; } /* Green */
+        .color-metal { background-color: #C0C0C0; } /* Silver */
+        .color-magic { background-color: #FFFFFF; } /* White */
+        .color-melody { background-color: #FFC0CB; } /* Pink */
+        .color-mountain { background-color: #2F4F4F; } /* Dark Green */
+        .color-nether { background-color: #800080; } /* Red-purple (Purple) */
+        .color-abandoned { background-color: #F5F5DC; } /* Beige */
+        .color-poison { background-color: #800080; } /* Purple (same as Nether for now) */
+        .color-ice { background-color: #ADD8E6; } /* Light Blue */
+        .color-paralysis { background-color: #ADFF2F; } /* Yellow-green */
+        .color-illness { background-color: #ADFF2F; } /* Greenish Yellow (same as paralysis for now) */
+        .color-acid { background-color: #7CFC00; } /* Lime Green */
+
+        /* Two-color/pattern */
+        .color-crystal { background: linear-gradient(45deg, #FFFFFF, #0000FF); } /* White and Blue */
+        .color-dirty { background: linear-gradient(45deg, #333333, #8B4513); } /* Black and Brown */
+        .color-blood { background: linear-gradient(45deg, #FF0000, #333333); } /* Red and Black */
+        .color-chie { background: linear-gradient(45deg, #FFFFFF, #FFFF00); } /* White and Yellow */
+        .color-plant { background: linear-gradient(45deg, #8B4513, #00FF00); } /* Brown and Green */
+
+        /* Special categories */
+        .color-star { background-color: #FFD700; } /* Gold for Star mark placeholder */
+        .color-emotion { background-color: #FF69B4; } /* Hot Pink for Emotion mark placeholder */
+        .color-support { background-color: #FFFFFF; } /* White for Support cards */
+        
+        /* Fallback */
+        .color-default { background-color: #666; } /* Default gray */
         .card.back { background-color: #666; border: 2px solid #444; }
         .card.selected { outline: 3px solid yellow; z-index: 10; }
         .card.attacked { filter: grayscale(0.9) brightness(0.7); cursor: default; }
@@ -181,6 +214,8 @@ const sizes = [
     "伝説のミニ", "伝説のノーマル", "伝説のジャイアント", "ロボミニ", "ロボノーマル", "ロボジャイアント",
     "鬼ミニ", "鬼ノーマル", "鬼ジャイアント", "覚醒モードミニ", "覚醒モードノーマル", "覚醒モードジャイアント"
 ];
+// For accurate prefix matching, sort sizes by length descending
+const sortedSizes = [...sizes].sort((a, b) => b.length - a.length);
 
 const powers = [
     "ライト", "ダーク", "ファイヤー", "ウォーター", "ランド", "ウィンド", "メタル", "クリスタル", "マジック",
@@ -195,6 +230,8 @@ const species = [
     "スライム", "ラビ", "ウルフ", "フロッグ", "キャット", "イーター", "ベア", "ゴーレム", "ワーム",
     "ドラゴン", "マン", "スピリット", "フェアリー", "デーモン"
 ];
+// For accurate suffix matching, sort species by length descending
+const sortedSpecies = [...species].sort((a, b) => b.length - a.length);
 
 const trumpNames = ["エース", "キング", "クイーン", "ジャック", "ジョーカー", "ハート", "スペード", "ダイヤ", "クラブ"];
 
@@ -430,6 +467,95 @@ const RANK_VALUES = {
     '2DRAW': 0, 'HEAL': 0, 'SKIP': 0 
 };
 
+// Helper to extract power from monsterName (displayName)
+function getMonsterPowerFromName(monsterName) {
+    let power = monsterName;
+    // Remove size prefix (using sorted array)
+    for (const sizePrefix of sortedSizes) {
+        if (power.startsWith(sizePrefix)) {
+            power = power.substring(sizePrefix.length);
+            break;
+        }
+    }
+    // Remove species suffix (using sorted array)
+    for (const specieSuffix of sortedSpecies) {
+        if (power.endsWith(specieSuffix)) {
+            power = power.substring(0, power.length - specieSuffix.length);
+            break;
+        }
+    }
+    return power;
+}
+
+const starPowers = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール"];
+const emotionPowers = ["アングリー", "ジョイ", "ソロー", "プレシャー", "ラブ", "ヘイト", "フィアー", "サプライズ", "ウォント"];
+
+const thematicColorMap = {
+    // Direct power names
+    "ライト": "color-light",
+    "ダーク": "color-dark",
+    "ファイヤー": "color-fire",
+    "ウォーター": "color-water",
+    "ランド": "color-land",
+    "ウィンド": "color-wind",
+    "メタル": "color-metal",
+    "マジック": "color-magic",
+    "メロディー": "color-melody",
+    "マウンテン": "color-mountain",
+    "ネザー": "color-nether",
+    "アバンダンド": "color-abandoned",
+    "ポイズン": "color-poison",
+    "アイス": "color-ice",
+    "パラリシス": "color-paralysis",
+    "イルネス": "color-illness",
+    "アシッド": "color-acid",
+
+    // Special categories
+    "Star": "color-star", // for "Star" type
+    "Emotion": "color-emotion", // for "Emotion" type
+
+    // Two-color/pattern powers
+    "クリスタル": "color-crystal",
+    "ダーティ": "color-dirty",
+    "ブラッド": "color-blood",
+    "チエ": "color-chie",
+    "プラント": "color-plant",
+    "Support": "color-support" // For standard support cards (white)
+    // "模様系" is not directly mapped, might be a generic pattern
+};
+
+function getThematicColorClass(thematicLabel) {
+    return thematicColorMap[thematicLabel] || "color-default"; // Fallback
+}
+
+function getThematicSuitLabel(card) {
+    if (card.monsterName) { // Monster card
+        const monsterPower = getMonsterPowerFromName(card.displayName);
+        if (starPowers.includes(monsterPower)) {
+            return "星"; // 星マーク
+        }
+        if (emotionPowers.includes(monsterPower)) {
+            return "😊"; // ニコニコマーク
+        }
+        return monsterPower; // Other powers
+    } else { // Standard (trump or support) card
+        if (card.isSupport) {
+            return "Support"; // Special label for support cards
+        }
+        return "星"; // Default for standard trump cards
+    }
+}
+
+// ヘルパー関数: モンスター名から必要パワーを計算
+function getRequiredPowerFromSize(monsterName) {
+    if (monsterName.startsWith("覚醒モード")) return 5;
+    if (monsterName.startsWith("ロボ")) return 4;
+    if (monsterName.startsWith("伝説の")) return 3;
+    if (monsterName.startsWith("ハイ")) return 2;
+    // ミニ、ノーマル、ジャイアント
+    return 1; 
+}
+
 class Card {
     constructor(suit, rank, type = 'unit', monsterName = null) {
         this.id = Math.random().toString(36).substr(2, 9);
@@ -441,7 +567,7 @@ class Card {
 
         if (monsterName) { // Logic for monster cards
             this.value = Math.floor(Math.random() * 10) + 1; // Random value 1-10
-            this.requiredPower = (this.value <= 3) ? 1 : (this.value <= 6) ? 2 : (this.value <= 10) ? 3 : 4;
+            this.requiredPower = getRequiredPowerFromSize(monsterName); // Calculate based on size
         } else { // Existing logic for regular cards
             this.value = RANK_VALUES[rank] || 0;
             this.requiredPower = this.isSupport ? 0 : ((this.value <= 3) ? 1 : (this.value <= 6) ? 2 : (this.value <= 10) ? 3 : 4);
@@ -499,10 +625,24 @@ function enterEditor() {
     const saved = localStorage.getItem(`deck_cards_${state.editIdx}`);
     state.editCards = saved ? JSON.parse(saved).map(d => new Card(d.suit, d.rank, d.type, d.monsterName)) : [];
     const pool = document.getElementById('pool-grid'); pool.innerHTML = '';
+    // Add standard cards
     SUITS.forEach(s => {
         RANKS.forEach(r => pool.appendChild(createCardUI(new Card(s, r), true)));
         SUPPORTS.forEach(a => pool.appendChild(createCardUI(new Card(s, a, 'support'), true)));
     });
+
+    // Add a selection of monster cards
+    const numMonsterCardsInPool = 20; // Number of unique monster cards to show in the pool
+    let generatedMonsterCards = new Set(); // Use a Set to ensure uniqueness
+    while (generatedMonsterCards.size < numMonsterCardsInPool) {
+        const monsterCard = generateRandomMonsterCard();
+        // Check for uniqueness based on monsterName (displayName)
+        if (![...generatedMonsterCards].some(c => c.displayName === monsterCard.displayName)) {
+            generatedMonsterCards.add(monsterCard);
+            pool.appendChild(createCardUI(monsterCard, true));
+        }
+    }
+
     renderEditor(); showScreen('editor-screen');
 }
 
@@ -593,7 +733,8 @@ function addLog(msg) {
 }
 
 function createCardEl(card) {
-    const div = document.createElement('div'); div.className = `card ${card.suit}`;
+    const thematicColorClass = getThematicColorClass(getThematicSuitLabel(card));
+    const div = document.createElement('div'); div.className = `card ${thematicColorClass}`;
     div.dataset.cardId = card.id; // Add data-card-id for easier lookup
 
     if (card.isFaceDown) {
@@ -603,10 +744,10 @@ function createCardEl(card) {
         // Create the inner HTML with placeholder for displayName
         let innerHtml = `<div class="hp-badge">${card.hp}/${card.maxHp}</div>`;
         innerHtml += `<div class="card-name-display" style="text-align: center;">${card.displayName}</div>`; // Use a class for easier targeting, and force center
-        innerHtml += `<div style="font-size:0.8em; text-align: center;">${card.suit}</div>`; // Force center
+        innerHtml += `<div style="font-size:0.8em; text-align: center;">${getThematicSuitLabel(card)}</div>`; // Force center
         innerHtml += `<div style="font-size:0.9em; text-align: center;">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>`; // Force center
         if (card.isSupport) {
-            innerHtml = `<div class="hp-badge">SP</div><div class="card-name-display" style="text-align: center;">${card.displayName}</div><div style="font-size:0.8em; text-align: center;">${card.suit}</div>`;
+            innerHtml = `<div class="hp-badge">SP</div><div class="card-name-display" style="text-align: center;">${card.displayName}</div><div style="font-size:0.8em; text-align: center;">${getThematicSuitLabel(card)}</div>`;
         }
         div.innerHTML = innerHtml;
 
