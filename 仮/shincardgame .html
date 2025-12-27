@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Roen Card Game - Ultra Complete</title>
+    <style>
+        :root {
+            --fire: #FF7B7B; --water: #7B8CFF; --wind: #7BFFB8; --earth: #C19A6B;
+            --accent: #FFCC00; --card-w: 63px; --card-h: 91px;
+        }
+        body { background-color: #3D3D3D; color: #F0F0F0; font-family: sans-serif; margin: 0; overflow: hidden; }
+        .screen { display: none; width: 100vw; height: 100vh; flex-direction: column; align-items: center; justify-content: center; position: absolute; }
+        .screen.active { display: flex; }
+
+        /* UI Buttons */
+        .menu-btn { width: 240px; padding: 12px; margin: 8px; background: #444; border: 2px solid #666; color: white; cursor: pointer; border-radius: 8px; font-weight: bold; text-align: center; }
+        .menu-btn:hover { border-color: var(--accent); background: #555; }
+        .start-btn { background: #4CAF50; border-color: #81C784; }
+
+        /* Card Designs (Based on your style) */
+        .card { 
+            width: var(--card-w); height: var(--card-h); border-radius: 8px; color: #333; cursor: pointer; 
+            position: relative; box-sizing: border-box; display: flex; flex-direction: column;
+            justify-content: space-between; padding: 5px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); font-size: 0.7em;
+        }
+        .card.fire { background-color: var(--fire); }
+        .card.water { background-color: var(--water); }
+        .card.wind { background-color: var(--wind); }
+        .card.earth { background-color: var(--earth); }
+        .card.support { border: 2px solid white; background: #F8F8F8; }
+        .card.selected { outline: 3px solid yellow; z-index: 10; transform: translateY(-5px); }
+        .card.attacked { filter: grayscale(0.9) brightness(0.7); cursor: default; }
+        .hp-badge { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; padding: 1px 3px; border-radius: 3px; font-size: 0.7em; }
+
+        /* Battle Field Layout */
+        .field { display: grid; grid-template-areas: "slot0 slot1 slot2" "slot5 slot4 slot3"; gap: 10px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .field.opponent-field-layout { grid-template-areas: "slot3 slot4 slot5" "slot2 slot1 slot0"; }
+        .card-slot { width: var(--card-w); height: var(--card-h); background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2); display: flex; justify-content: center; align-items: center; position: relative; }
+        
+        .player-hand, .opponent-hand-area { height: 110px; display: flex; justify-content: center; align-items: center; gap: 5px; background: rgba(0,0,0,0.4); width: 100%; }
+        .info-row { width: 100%; display: flex; justify-content: space-around; align-items: center; padding: 5px 0; background: #222; font-size: 0.85em; border-top: 1px solid #444; border-bottom: 1px solid #444; }
+        .score-display { font-size: 3em; font-weight: bold; min-width: 100px; text-align: center; }
+        .score-display.opponent-score { color: var(--fire); }
+        .score-display.player-score { color: var(--water); }
+
+        /* Log & Roulette */
+        .log-area { position: absolute; left: 10px; top: 10px; width: 200px; height: 120px; background: rgba(0,0,0,0.8); font-size: 10px; overflow-y: auto; padding: 8px; z-index: 100; border: 1px solid #555; }
+        #roulette-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 2000; font-size: 2.5em; color: #FFF; font-weight: bold; }
+
+        /* Editor/Collection Grids */
+        .grid-list { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; width: 90%; }
+        .scroll-box { flex: 1; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 10px; overflow-y: auto; height: 70vh; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(63px, 1fr)); gap: 8px; }
+    </style>
+</head>
+<body>
+
+<div id="roulette-overlay"></div>
+
+<div id="title-screen" class="screen active">
+    <h1 id="t-title" style="color: var(--accent); font-size: 2.5em;">Roen Card Game</h1>
+    <div class="menu-btn start-btn" id="btn-start" onclick="showScreen('mode-screen')">START</div>
+    <div class="menu-btn" id="btn-settings" onclick="showScreen('settings-screen')">SETTINGS</div>
+    <div class="menu-btn" id="btn-rules" onclick="showScreen('rule-screen')">RULES</div>
+    <div class="menu-btn" id="btn-coll" onclick="openCollection()">COLLECTION</div>
+</div>
+
+<div id="mode-screen" class="screen">
+    <h2 id="t-mode">SELECT MODE</h2>
+    <div class="menu-btn start-btn" id="btn-random" onclick="initGame()">AI RANDOM MATCH</div>
+    <div class="menu-btn" id="btn-deck" onclick="openDeckList()" style="background:#5C6BC0">DECK BUILD (100)</div>
+    <div class="menu-btn btn-back" onclick="showScreen('title-screen')">BACK</div>
+</div>
+
+<div id="settings-screen" class="screen">
+    <h2 id="t-settings">SETTINGS</h2>
+    <div class="menu-btn" onclick="setLang('jp')">日本語 / Japanese</div>
+    <div class="menu-btn" onclick="setLang('en')">English</div>
+    <div class="menu-btn btn-back" onclick="showScreen('title-screen')">BACK</div>
+</div>
+
+<div id="rule-screen" class="screen">
+    <div style="background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; width:70%;">
+        <h3 id="t-rule-head">RULES</h3>
+        <p id="t-rule-desc">...</p>
+        <button class="menu-btn btn-back" onclick="showScreen('title-screen')">CLOSE</button>
+    </div>
+</div>
+
+<div id="collection-screen" class="screen">
+    <h2 id="t-coll">COLLECTION</h2>
+    <div id="coll-grid" class="grid-list" style="grid-template-columns: repeat(7, 1fr);"></div>
+    <button class="menu-btn btn-back" onclick="showScreen('title-screen')">BACK</button>
+</div>
+
+<div id="deck-list-screen" class="screen">
+    <h2 id="t-deck-list">DECK LIST</h2>
+    <div id="deck-grid" class="grid-list" style="grid-template-columns: repeat(4, 1fr);"></div>
+    <button class="menu-btn btn-back" onclick="showScreen('mode-screen')">BACK</button>
+</div>
+
+<div id="editor-screen" class="screen">
+    <h3 id="editor-title">Editor</h3>
+    <div style="display: flex; width: 95%; gap: 15px; margin-bottom: 10px;">
+        <div class="scroll-box"><h4>POOL</h4><div id="pool-grid" class="card-grid"></div></div>
+        <div class="scroll-box"><h4>DECK (<span id="deck-cnt">0</span>/40)</h4><div id="edit-deck-grid" class="card-grid"></div></div>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button class="menu-btn" style="background:#27ae60" onclick="saveDeck()">SAVE</button>
+        <button class="menu-btn btn-back" onclick="showScreen('deck-list-screen')">BACK</button>
+    </div>
+</div>
+
+<div id="game-screen" class="screen">
+    <div id="log-area" class="log-area"><strong>LOG</strong></div>
+    <div id="opponent-hand" class="opponent-hand-area"></div>
+    <div id="opponent-field" class="field opponent-field-layout"></div>
+
+    <div class="info-row">
+        <div class="score-display opponent-score" id="opp-hp">20</div>
+        <div style="text-align:center;">
+            <div id="status-text" style="color:yellow; font-weight:bold; font-size:0.9em;">SETUP</div>
+            <button id="ok-btn" class="menu-btn" style="width:120px; padding:5px; margin:2px;" onclick="finishSetup()">OK</button>
+            <div id="battle-controls" style="display:none; gap: 5px;">
+                <button id="pwr-btn" class="menu-btn" style="width:80px; padding:5px; background:var(--accent); color:black;" onclick="addPower()">POWER</button>
+                <button id="end-btn" class="menu-btn" style="width:80px; padding:5px;" onclick="endTurn()">END</button>
+            </div>
+        </div>
+        <div class="score-display player-score" id="ply-hp">20</div>
+    </div>
+
+    <div id="player-field" class="field"></div>
+    <div id="player-hand" class="player-hand"></div>
+</div>
+
+<script>
+const SUITS = ['fire', 'water', 'wind', 'earth'];
+const RANKS = ['A','K','Q','J','10','9','8','7','6','5','4','3','2'];
+const RANK_VALS = {'A':14,'K':13,'Q':12,'J':11,'10':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2};
+const LANG_DATA = {
+    jp: {
+        "btn-start": "スタート", "btn-settings": "設定", "btn-rules": "ルール", "btn-coll": "コレクション",
+        "t-mode": "モード選択", "btn-random": "AIランダムマッチ", "btn-deck": "デッキ作成 (100)",
+        "t-settings": "設定", "t-rule-head": "ルール", "t-rule-desc": "カードを配置して「OK」！パワー(P)を貯めて攻撃！<br>相手のHPを0にすれば勝ちだぴょん！",
+        "t-coll": "図鑑（HP確認）", "t-deck-list": "デッキリスト", "btn-back": "戻る"
+    },
+    en: {
+        "btn-start": "START", "btn-settings": "SETTINGS", "btn-rules": "RULES", "btn-coll": "COLLECTION",
+        "t-mode": "SELECT MODE", "btn-random": "AI RANDOM MATCH", "btn-deck": "DECK BUILD (100)",
+        "t-settings": "SETTINGS", "t-rule-head": "RULES", "t-rule-desc": "Place cards and click 'OK'! Charge Power (P) to attack.<br>Reduce Enemy HP to 0 to win!",
+        "t-coll": "COLLECTION (Check HP)", "t-deck-list": "DECK LIST", "btn-back": "BACK"
+    }
+};
+
+let currentLang = localStorage.getItem('lang') || 'jp';
+let state = {
+    player: { hp: 20, hand: [], field: Array(6).fill(null), attacked: [], pwrUsed: false },
+    opponent: { hp: 20, field: Array(6).fill(null), handCount: 5 },
+    canPlace: true, selected: null, editIdx: -1, editCards: [], turn: 'player'
+};
+
+class Card {
+    constructor(suit, rank, type = 'monster') {
+        this.id = Math.random().toString(36).substr(2,9);
+        this.suit = suit; this.rank = rank; this.type = type;
+        this.val = RANK_VALS[rank] || 0;
+        this.hp = this.val; this.maxHp = this.val;
+        this.p = 0; this.req = this.val >= 11 ? 2 : 1;
+        if(type === 'support') this.ability = rank;
+    }
+}
+
+function addLog(msg) {
+    const log = document.getElementById('log-area');
+    const div = document.createElement('div'); div.textContent = `> ${msg}`;
+    log.appendChild(div); log.scrollTop = log.scrollHeight;
+}
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function setLang(lang) { currentLang = lang; localStorage.setItem('lang', lang); applyLang(); }
+function applyLang() {
+    const data = LANG_DATA[currentLang];
+    for (let id in data) { if (document.getElementById(id)) document.getElementById(id).innerHTML = data[id]; }
+    document.querySelectorAll('.btn-back').forEach(btn => btn.innerText = data["btn-back"]);
+}
+
+function createCardUI(c, isEditor = false, isPool = false) {
+    const div = document.createElement('div');
+    div.className = `card ${c.type === 'support' ? 'support' : c.suit}`;
+    if(state.selected && state.selected.id === c.id) div.classList.add('selected');
+    if(state.player.attacked.includes(c.id)) div.classList.add('attacked');
+    
+    if(c.type === 'support') {
+        div.innerHTML = `<div>SUP</div><div style="font-size:1em">${c.ability}</div><div style="font-size:0.7em">${c.suit.toUpperCase()}</div>`;
+    } else {
+        div.innerHTML = `<div class="hp-badge">${c.hp}/${c.maxHp}</div><div style="font-size:1.3em">${c.rank}</div><div>${c.suit.toUpperCase()}</div><div style="font-size:0.7em">P:${c.p}/${c.req}<br>ATK:${c.val+c.p}</div>`;
+    }
+    
+    div.onclick = (e) => {
+        e.stopPropagation();
+        if(isEditor) {
+            if(isPool) { if(state.editCards.length < 40) state.editCards.push(Object.assign(new Card(), c)); }
+            else { state.editCards.splice(state.editCards.indexOf(c), 1); }
+            renderEditor();
+        } else { state.selected = c; renderGame(); }
+    };
+    return div;
+}
+
+// --- Deck / Collection ---
+function openCollection() {
+    const grid = document.getElementById('coll-grid'); grid.innerHTML = '';
+    SUITS.forEach(s => {
+        RANKS.forEach(r => grid.appendChild(createCardUI(new Card(s, r))));
+        ['2DRAW','HEAL','SKIP'].forEach(a => grid.appendChild(createCardUI(new Card(s, a, 'support'))));
+    });
+    showScreen('collection-screen');
+}
+
+function openDeckList() {
+    const grid = document.getElementById('deck-grid'); grid.innerHTML = '';
+    for(let i=1; i<=100; i++) {
+        const name = localStorage.getItem(`deck_name_${i}`) || `DECK ${i}`;
+        const slot = document.createElement('div'); slot.className = 'menu-btn';
+        slot.style.width = "auto"; slot.innerHTML = `${name}<br><small>Slot ${i}</small>`;
+        slot.onclick = () => { state.editIdx = i; enterEditor(); };
+        grid.appendChild(slot);
+    }
+    showScreen('deck-list-screen');
+}
+
+function enterEditor() {
+    const saved = localStorage.getItem(`deck_cards_${state.editIdx}`);
+    state.editCards = saved ? JSON.parse(saved).map(d => Object.assign(new Card(), d)) : [];
+    const pool = document.getElementById('pool-grid'); pool.innerHTML = '';
+    SUITS.forEach(s => {
+        RANKS.forEach(r => pool.appendChild(createCardUI(new Card(s, r), true, true)));
+        ['2DRAW','HEAL','SKIP'].forEach(a => pool.appendChild(createCardUI(new Card(s, a, 'support'), true, true)));
+    });
+    renderEditor(); showScreen('editor-screen');
+}
+
+function renderEditor() {
+    const grid = document.getElementById('edit-deck-grid'); grid.innerHTML = '';
+    state.editCards.forEach(c => grid.appendChild(createCardUI(c, true, false)));
+    document.getElementById('deck-cnt').textContent = state.editCards.length;
+}
+
+function saveDeck() {
+    localStorage.setItem(`deck_cards_${state.editIdx}`, JSON.stringify(state.editCards));
+    const name = prompt("Name:", localStorage.getItem(`deck_name_${state.editIdx}`) || `DECK ${state.editIdx}`);
+    if(name) localStorage.setItem(`deck_name_${state.editIdx}`, name);
+    openDeckList();
+}
+
+// --- Battle Flow ---
+function initGame() {
+    const overlay = document.getElementById('roulette-overlay');
+    overlay.style.display = 'flex';
+    let count = 0;
+    const interval = setInterval(() => {
+        overlay.textContent = count % 2 === 0 ? "PLAYER FIRST?" : "ENEMY FIRST?";
+        if (++count > 10) {
+            clearInterval(interval);
+            const isPlayer = Math.random() > 0.5;
+            overlay.textContent = isPlayer ? "PLAYER FIRST" : "ENEMY FIRST";
+            state.turn = isPlayer ? 'player' : 'opponent';
+            setTimeout(() => { overlay.style.display = 'none'; startBattle(); }, 1000);
+        }
+    }, 100);
+}
+
+function startBattle() {
+    state.player.hp = 20; state.opponent.hp = 20;
+    state.player.field = Array(6).fill(null); state.opponent.field = Array(6).fill(null);
+    state.player.hand = [new Card('fire','A'), new Card('water','7'), new Card('earth','HEAL','support')];
+    state.opponent.field[0] = new Card('fire','10');
+    state.canPlace = true; state.player.attacked = [];
+    document.getElementById('ok-btn').style.display = 'inline-block';
+    document.getElementById('battle-controls').style.display = 'none';
+    addLog("Battle Started!"); renderGame(); showScreen('game-screen'); applyLang();
+}
+
+function renderGame() {
+    const ph = document.getElementById('player-hand'); ph.innerHTML = '';
+    state.player.hand.forEach(c => ph.appendChild(createCardUI(c)));
+    
+    const oh = document.getElementById('opponent-hand'); oh.innerHTML = '';
+    for(let i=0; i<state.opponent.handCount; i++) {
+        const back = document.createElement('div'); back.className = 'card support';
+        back.style.background = '#444'; oh.appendChild(back);
+    }
+
+    drawField('player-field', state.player.field, false);
+    drawField('opponent-field', state.opponent.field, true);
+    document.getElementById('opp-hp').textContent = state.opponent.hp;
+    document.getElementById('ply-hp').textContent = state.player.hp;
+}
+
+function drawField(id, field, isOpp) {
+    const container = document.getElementById(id); container.innerHTML = '';
+    field.forEach((c, i) => {
+        const slot = document.createElement('div'); slot.className = 'card-slot'; slot.style.gridArea = `slot${i}`;
+        if(c) {
+            const ui = createCardUI(c);
+            ui.onclick = () => isOpp ? resolveAttack(c) : selectFromField(c, i);
+            slot.appendChild(ui);
+        } else if(!isOpp && state.canPlace) {
+            slot.onclick = () => {
+                if(state.selected && state.player.hand.includes(state.selected) && state.selected.type === 'monster') {
+                    state.player.field[i] = state.selected;
+                    state.player.hand.splice(state.player.hand.indexOf(state.selected), 1);
+                    state.selected = null; renderGame();
+                }
+            };
+        }
+        container.appendChild(slot);
+    });
+}
+
+function selectFromField(c, i) {
+    if(state.canPlace) { state.player.hand.push(c); state.player.field[i] = null; }
+    else { state.selected = c; }
+    renderGame();
+}
+
+function finishSetup() {
+    state.canPlace = false;
+    document.getElementById('ok-btn').style.display = 'none';
+    document.getElementById('battle-controls').style.display = 'flex';
+    document.getElementById('status-text').textContent = "BATTLE";
+    renderGame();
+}
+
+function addPower() {
+    if(!state.pwrUsed && state.selected && state.player.field.includes(state.selected)) {
+        state.selected.p++; state.pwrUsed = true; addLog("Power Up!"); renderGame();
+    }
+}
+
+function resolveAttack(target) {
+    if(state.canPlace || !state.selected || state.player.attacked.includes(state.selected.id)) return;
+    if(!state.player.field.includes(state.selected)) return;
+    if(state.selected.p < state.selected.req) { alert("Power Lack!"); return; }
+    
+    const dmg = state.selected.val + state.selected.p;
+    target.hp -= dmg;
+    state.player.attacked.push(state.selected.id);
+    addLog(`Attack! ${dmg} dmg`);
+    if(target.hp <= 0) {
+        state.opponent.field[state.opponent.field.indexOf(target)] = null;
+        addLog("Enemy Destroyed!");
+    }
+    checkWin(); renderGame();
+}
+
+function endTurn() {
+    state.player.attacked = []; state.pwrUsed = false;
+    addLog("Enemy Turn...");
+    setTimeout(() => {
+        const enemy = state.opponent.field.find(c => c !== null);
+        if(enemy) {
+            const target = state.player.field.find(c => c !== null);
+            if(target) { target.hp -= enemy.val; addLog(`Enemy ATK: ${enemy.val}`); }
+            else { state.player.hp -= 2; addLog("Direct ATK!"); }
+        }
+        checkWin(); renderGame();
+    }, 1000);
+}
+
+function checkWin() {
+    if(state.opponent.hp <= 0) { alert("WIN!"); showScreen('title-screen'); }
+    else if(state.player.hp <= 0) { alert("LOSE..."); showScreen('title-screen'); }
+}
+
+applyLang();
+</script>
+</body>
+</html>

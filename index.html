@@ -41,6 +41,14 @@
         .card.selected { outline: 3px solid yellow; z-index: 10; }
         .card.attacked { filter: grayscale(0.9) brightness(0.7); cursor: default; }
         .hp-badge { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; padding: 1px 3px; border-radius: 3px; font-size: 0.7em; }
+        .card-name-display {
+            /* font-size will be set dynamically by JS, but a default can be useful */
+            font-size: 1em; /* Initial value, will be overridden */
+            line-height: 1.1;
+            word-break: break-word; /* Allow long words to break */
+            overflow: hidden; /* Hide overflowing text before JS adjusts */
+            max-height: 100%; /* Prevent name from taking too much vertical space */
+        }
         .player-hand, .opponent-hand-area { height: 110px; display: flex; justify-content: center; align-items: center; gap: 5px; background: rgba(0,0,0,0.4); }
         .info-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; background: #222; font-size: 0.85em; border-top: 1px solid #444; border-bottom: 1px solid #444; }
         .card-pile-slot { width: 50px; height: 70px; background: #666; border: 2px solid #444; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 0.8em; color: white; }
@@ -107,6 +115,7 @@
 
 <div id="collection-screen" class="screen">
     <h2 data-lang-key="collection">COLLECTION</h2>
+    <button class="game-button" onclick="addMonsterCardsToCollection()">さらにモンスターカードを生成</button>
     <div id="coll-grid" class="grid-container" style="grid-template-columns: repeat(7, 1fr);"></div>
     <div class="menu-btn" data-lang-key="back_to_title" onclick="showScreen('title-screen')">BACK</div>
 </div>
@@ -166,6 +175,45 @@
 </div>
 
 <script>
+// --- 名前の生成ロジック ---
+const sizes = [
+    "ミニ", "ノーマル", "ジャイアント", "ハイミニ", "ハイノーマル", "ハイジャイアント",
+    "伝説のミニ", "伝説のノーマル", "伝説のジャイアント", "ロボミニ", "ロボノーマル", "ロボジャイアント",
+    "鬼ミニ", "鬼ノーマル", "鬼ジャイアント", "覚醒モードミニ", "覚醒モードノーマル", "覚醒モードジャイアント"
+];
+
+const powers = [
+    "ライト", "ダーク", "ファイヤー", "ウォーター", "ランド", "ウィンド", "メタル", "クリスタル", "マジック",
+    "クリア", "メロディー", "マウンテン", "ポイズン", "ダーティ", "ブラッド", "アイス", "パラリシス",
+    "イルネス", "アシッド", "タイヤード", "ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ",
+    "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "アングリー", "ジョイ", "ソロー",
+    "プレシャー", "ラブ", "ヘイト", "フィアー", "サプライズ", "ウォント", "プラント", "チェック", "ドット",
+    "ワールプール", "ネザー", "アバンダンド", "チエ"
+];
+
+const species = [
+    "スライム", "ラビ", "ウルフ", "フロッグ", "キャット", "イーター", "ベア", "ゴーレム", "ワーム",
+    "ドラゴン", "マン", "スピリット", "フェアリー", "デーモン"
+];
+
+const trumpNames = ["エース", "キング", "クイーン", "ジャック", "ジョーカー", "ハート", "スペード", "ダイヤ", "クラブ"];
+
+function getRandomElement(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function generateHuntingName() {
+    const size = getRandomElement(sizes);
+    const power = getRandomElement(powers);
+    const specie = getRandomElement(species);
+    return `${size}${power}${specie}`;
+}
+
+function generateTrumpName() {
+    return getRandomElement(trumpNames);
+}
+// --- ここまで名前の生成ロジック ---
+
 const languageData = {
     en: {
         'adventure_battle': 'ADVENTURE / BATTLE',
@@ -383,14 +431,24 @@ const RANK_VALUES = {
 };
 
 class Card {
-    constructor(suit, rank, type = 'unit') {
+    constructor(suit, rank, type = 'unit', monsterName = null) {
         this.id = Math.random().toString(36).substr(2, 9);
-        this.suit = suit; this.rank = rank; this.type = type;
-        this.value = RANK_VALUES[rank] || 0;
+        this.suit = suit;
+        this.rank = rank;
+        this.type = type;
+        this.displayName = monsterName || rank; // Use monsterName if provided, otherwise use rank
+        this.isSupport = (type === 'support' || SUPPORTS.includes(rank)); // Determine isSupport first
+
+        if (monsterName) { // Logic for monster cards
+            this.value = Math.floor(Math.random() * 10) + 1; // Random value 1-10
+            this.requiredPower = (this.value <= 3) ? 1 : (this.value <= 6) ? 2 : (this.value <= 10) ? 3 : 4;
+        } else { // Existing logic for regular cards
+            this.value = RANK_VALUES[rank] || 0;
+            this.requiredPower = this.isSupport ? 0 : ((this.value <= 3) ? 1 : (this.value <= 6) ? 2 : (this.value <= 10) ? 3 : 4);
+        }
+        
         this.hp = this.value; this.maxHp = this.value;
         this.attachedPower = 0;
-        this.isSupport = (type === 'support' || SUPPORTS.includes(rank));
-        this.requiredPower = this.isSupport ? 0 : (this.value <= 3) ? 1 : (this.value <= 6) ? 2 : (this.value <= 10) ? 3 : 4;
     }
 }
 
@@ -439,7 +497,7 @@ function openDeckList(purpose = 'edit') {
 
 function enterEditor() {
     const saved = localStorage.getItem(`deck_cards_${state.editIdx}`);
-    state.editCards = saved ? JSON.parse(saved).map(d => Object.assign(new Card(), d)) : [];
+    state.editCards = saved ? JSON.parse(saved).map(d => new Card(d.suit, d.rank, d.type, d.monsterName)) : [];
     const pool = document.getElementById('pool-grid'); pool.innerHTML = '';
     SUITS.forEach(s => {
         RANKS.forEach(r => pool.appendChild(createCardUI(new Card(s, r), true)));
@@ -461,7 +519,8 @@ function createCardUI(c, isPool) {
                 alert(getText('same_card_2_max'));
                 return;
             }
-            state.editCards.push(new Card(c.suit, c.rank, c.type)); 
+            // Preserve monsterName if it's a monster card
+            state.editCards.push(new Card(c.suit, c.rank, c.type, c.monsterName)); 
         } else { 
             // This part is for removing cards from the deck, which is correct.
             // Find the specific card instance to remove.
@@ -502,12 +561,30 @@ function showScreen(id) {
 }
 
 function renderCollection() {
-    const grid = document.getElementById('coll-grid'); grid.innerHTML = ''; 
+    const grid = document.getElementById('coll-grid');
+    grid.innerHTML = ''; // Clear previous content
+
+    // Display regular cards first
     SUITS.forEach(s => {
         RANKS.forEach(r => grid.appendChild(createCardEl(new Card(s, r))));
         SUPPORTS.forEach(a => grid.appendChild(createCardEl(new Card(s, a, 'support'))));
     });
+
+    // Automatically add initial monster cards
+    addMonsterCardsToCollection(true); // Pass true to indicate initial load
 }
+
+// モンスターカードをコレクションに追加する関数
+function addMonsterCardsToCollection(isInitialLoad = false) {
+    const grid = document.getElementById('coll-grid');
+    const numCardsToAdd = isInitialLoad ? 10 : 5; // Add 10 initially, 5 for subsequent clicks
+
+    for (let i = 0; i < numCardsToAdd; i++) { // Generate random monster cards
+        const monsterCard = generateRandomMonsterCard();
+        grid.appendChild(createCardEl(monsterCard));
+    }
+}
+
 
 function addLog(msg) {
     const log = document.getElementById('log-area');
@@ -522,13 +599,58 @@ function createCardEl(card) {
     if (card.isFaceDown) {
         div.className = 'card back';
         div.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 2em; color: white;">?</div>`;
-    } else if(card.isSupport) {
-        div.innerHTML = `<div class="hp-badge">SP</div><div style="font-size:0.9em">${card.rank}</div><div style="font-size:0.8em">${card.suit}</div>`;
     } else {
-        div.innerHTML = `<div class="hp-badge">${card.hp}/${card.maxHp}</div><div style="font-size:1.2em">${card.rank}</div><div style="font-size:0.8em">${card.suit}</div><div style="font-size:0.9em">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>`;
+        // Create the inner HTML with placeholder for displayName
+        let innerHtml = `<div class="hp-badge">${card.hp}/${card.maxHp}</div>`;
+        innerHtml += `<div class="card-name-display" style="text-align: center;">${card.displayName}</div>`; // Use a class for easier targeting, and force center
+        innerHtml += `<div style="font-size:0.8em; text-align: center;">${card.suit}</div>`; // Force center
+        innerHtml += `<div style="font-size:0.9em; text-align: center;">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>`; // Force center
+        if (card.isSupport) {
+            innerHtml = `<div class="hp-badge">SP</div><div class="card-name-display" style="text-align: center;">${card.displayName}</div><div style="font-size:0.8em; text-align: center;">${card.suit}</div>`;
+        }
+        div.innerHTML = innerHtml;
+
+        // Adjust font size after the element is in the DOM (or at least has its content)
+        const nameDisplayElement = div.querySelector('.card-name-display');
+        if (nameDisplayElement) {
+            // Set an initial larger font size for dynamic adjustment
+            nameDisplayElement.style.fontSize = '1em'; // Start with a reasonable size
+            adjustFontSizeToFit(nameDisplayElement, 1, 0.6); // Max 1em, Min 0.6em (updated)
+        }
     }
     return div;
 }
+
+// モンスターカードを生成する関数
+function generateRandomMonsterCard() {
+    const monsterName = generateHuntingName();
+    const randomSuit = getRandomElement(SUITS);
+    // For simplicity, monster cards will have a 'M' rank (or any non-standard rank)
+    // and their actual name will be in displayName.
+    return new Card(randomSuit, 'M', 'unit', monsterName);
+}
+
+// テキストが要素内に収まるようにフォントサイズを調整するヘルパー関数
+function adjustFontSizeToFit(element, maxFontSizeEm = 0.8, minFontSizeEm = 0.6) {
+    if (!element || !element.textContent) return;
+
+    let currentFontSizeEm = maxFontSizeEm;
+    element.style.fontSize = `${currentFontSizeEm}em`;
+
+    // 親要素の幅を取得 (カードの幅に依存するため)
+    const parentWidth = element.parentElement ? element.parentElement.offsetWidth : 0;
+    const padding = 10; // カードのパディングを考慮
+    const availableWidth = parentWidth - padding; // テキストが利用できる幅
+
+    // テキストがオーバーフローしている間、フォントサイズを縮小
+    while (element.scrollWidth > availableWidth && currentFontSizeEm > minFontSizeEm) {
+        currentFontSizeEm -= 0.05; // 0.05emずつ縮小
+        element.style.fontSize = `${currentFontSizeEm}em`;
+    }
+    // テキストがオーバーフローしなくても、最小サイズより大きい場合は、最大サイズにリセットすることも考慮できるが、
+    // 今回は単純に収まるまで縮小するのみ
+}
+
 
     // Helper to find the DOM element of a card
     function getCardElement(card) {
@@ -1133,7 +1255,7 @@ function startGameWithDeck(deckId) {
     state = getInitialState(); // Reset all state variables
 
     // 1. Player's deck setup
-    let playerDeck = parsedDeck.map(d => Object.assign(new Card(), d));
+    let playerDeck = parsedDeck.map(d => new Card(d.suit, d.rank, d.type, d.monsterName));
     // Shuffle player's deck
     for (let i = playerDeck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
