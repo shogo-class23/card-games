@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Roen Card Game - Full Integrated Perfect</title>
+    <title>Mark-Inscribed Monster</title>
     <style>
         :root {
             --fire-color: #FF7B7B; --water-color: #7B8CFF;
@@ -67,54 +67,54 @@
 <div id="roulette-overlay">先攻を決定します</div>
 
 <div id="title-screen" class="screen active">
-    <h1 style="font-size: 3em; color:var(--accent); text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">Roen Card Game</h1>
-    <div class="menu-btn" onclick="showScreen('mode-screen')">ADVENTURE / BATTLE</div>
-    <div class="menu-btn" onclick="openDeckList('edit')">DECK EDITOR (100 Slots)</div>
-    <div class="menu-btn" onclick="showScreen('collection-screen')">CARD COLLECTION</div>
-    <div class="menu-btn" onclick="showScreen('settings-screen')">GAME SETTINGS</div>
+    <h1 style="font-size: 3em; color:var(--accent); text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">Mark-Inscribed Monster</h1>
+    <div class="menu-btn" data-lang-key="adventure_battle" onclick="showScreen('mode-screen')">ADVENTURE / BATTLE</div>
+    <div class="menu-btn" data-lang-key="deck_editor" onclick="openDeckList('edit')">DECK EDITOR (100 Slots)</div>
+    <div class="menu-btn" data-lang-key="card_collection" onclick="showScreen('collection-screen')">CARD COLLECTION</div>
+    <div class="menu-btn" data-lang-key="game_settings" onclick="showScreen('settings-screen')">GAME SETTINGS</div>
 </div>
 
 <div id="editor-screen" class="screen">
-    <h2 id="editor-title">DECK EDITOR</h2>
+    <h2 id="editor-title" data-lang-key="deck_editor_title">DECK EDITOR</h2>
     <div class="editor-layout">
         <div style="flex:1; display:flex; flex-direction:column;">
-            <h3>CARD POOL</h3>
+            <h3 data-lang-key="card_pool">CARD POOL</h3>
             <div id="pool-grid" class="scroll-grid"></div>
         </div>
         <div style="flex:1; display:flex; flex-direction:column;">
-            <h3>DECK (<span id="deck-count">0</span>/30)</h3>
+            <h3><span data-lang-key="deck_count_label">DECK</span> (<span id="deck-count">0</span>/30)</h3>
             <div id="current-deck-grid" class="scroll-grid"></div>
         </div>
     </div>
     <div style="display:flex; gap:10px; margin-top:10px;">
-        <button class="game-button" onclick="saveDeck()">SAVE & EXIT</button>
-        <button class="game-button" style="background:#666" onclick="openDeckList('edit')">CANCEL</button>
+        <button class="game-button" data-lang-key="save_exit" onclick="saveDeck()">SAVE & EXIT</button>
+        <button class="game-button" data-lang-key="cancel" style="background:#666" onclick="openDeckList('edit')">CANCEL</button>
     </div>
 </div>
 
 <div id="mode-screen" class="screen">
-    <h2>SELECT YOUR CHALLENGE</h2>
-    <div class="menu-btn" style="background:#4CAF50" onclick="initBattle()">VS RANDOM AI</div>
-    <div class="menu-btn" onclick="showScreen('title-screen')">BACK TO TITLE</div>
+    <h2 data-lang-key="select_challenge">SELECT YOUR CHALLENGE</h2>
+    <div class="menu-btn" data-lang-key="vs_random_ai" style="background:#4CAF50" onclick="initBattle()">VS RANDOM AI</div>
+    <div class="menu-btn" data-lang-key="back_to_title" onclick="showScreen('title-screen')">BACK TO TITLE</div>
 </div>
 
 <div id="settings-screen" class="screen">
-    <h2>SETTINGS</h2>
-    <div class="menu-btn" onclick="alert('Language: Japanese')">LANGUAGE: 日本語</div>
-    <div class="menu-btn" onclick="alert('Sound Settings')">BGM / SE</div>
-    <div class="menu-btn" onclick="showScreen('title-screen')">BACK</div>
+    <h2 data-lang-key="settings">SETTINGS</h2>
+    <div class="menu-btn" data-lang-key="language_toggle" onclick="toggleLanguage()">LANGUAGE: 日本語</div>
+    <div class="menu-btn" data-lang-key="sound_settings" onclick="alert('Sound Settings')">BGM / SE</div>
+    <div class="menu-btn" data-lang-key="back_to_title" onclick="showScreen('title-screen')">BACK</div>
 </div>
 
 <div id="collection-screen" class="screen">
-    <h2>COLLECTION</h2>
+    <h2 data-lang-key="collection">COLLECTION</h2>
     <div id="coll-grid" class="grid-container" style="grid-template-columns: repeat(7, 1fr);"></div>
-    <div class="menu-btn" onclick="showScreen('title-screen')">BACK</div>
+    <div class="menu-btn" data-lang-key="back_to_title" onclick="showScreen('title-screen')">BACK</div>
 </div>
 
 <div id="deck-list-screen" class="screen">
-    <h2>CHOOSE DECK SLOT</h2>
+    <h2 data-lang-key="choose_deck_slot">CHOOSE DECK SLOT</h2>
     <div id="deck-grid" class="grid-container"></div>
-    <div class="menu-btn" onclick="showScreen('title-screen')">BACK</div>
+    <div class="menu-btn" data-lang-key="back_to_title" onclick="showScreen('title-screen')">BACK</div>
 </div>
 
 <div id="game-screen" class="screen">
@@ -166,6 +166,213 @@
 </div>
 
 <script>
+const languageData = {
+    en: {
+        'adventure_battle': 'ADVENTURE / BATTLE',
+        'deck_editor': 'DECK EDITOR (100 Slots)',
+        'card_collection': 'CARD COLLECTION',
+        'game_settings': 'GAME SETTINGS',
+        'select_challenge': 'SELECT YOUR CHALLENGE',
+        'vs_random_ai': 'VS RANDOM AI',
+        'back_to_title': 'BACK TO TITLE',
+        'settings': 'SETTINGS',
+        'language_toggle': 'LANGUAGE: English',
+        'sound_settings': 'BGM / SE',
+        'collection': 'COLLECTION',
+        'choose_deck_slot': 'CHOOSE DECK SLOT',
+        'deck_editor_title': 'DECK EDITOR',
+        'card_pool': 'CARD POOL',
+        'deck_count_label': 'DECK',
+        'save_exit': 'SAVE & EXIT',
+        'cancel': 'CANCEL',
+        // Alerts & Prompts
+        'deck_30_cards_max': 'Deck cannot exceed 30 cards.',
+        'same_card_2_max': 'Cannot have more than 2 of the same card.',
+        'deck_must_be_30': 'Deck must have exactly 30 cards. Current count: ',
+        'deck_not_saved': 'No deck saved in this slot.',
+        'deck_not_30': 'This deck does not have 30 cards. (Current: ',
+        'prompt_deck_name': 'Name:',
+        // Game Over
+        'win_message': 'YOU WIN!',
+        'lose_message': 'YOU LOSE...',
+        'draw_message': 'DRAW',
+        // Game Logs
+        'log_support_card_not_in_battle': 'Cannot use support cards now.',
+        'log_use_2draw': 'Used [2DRAW]! Drew 2 cards!',
+        'log_deck_empty': 'Deck is empty!',
+        'log_use_heal': 'Used [HEAL]! Choose a card to heal!',
+        'log_use_skip': 'Used [SKIP]! Skipping opponent\'s turn!',
+        'log_support_card_not_on_place': 'Cannot place support cards during placement phase.',
+        'log_must_press_attack_button': 'To attack, press the "Attack" button and select a target!',
+        'log_select_unit_from_hand': 'Select a unit card from your hand to place.',
+        'log_support_card_no_place': 'Support cards cannot be placed on the field.',
+        'log_card_placed': 'Placed ${rank}.',
+        'log_only_unit_can_be_healed': 'Only unit cards can be healed.',
+        'log_heal_success': 'Healed ${rank} for 3 HP! (Current HP: ${hp})',
+        'log_card_returned_to_hand': 'Returned ${rank} to hand.',
+        'log_power_injected': 'Injected power into ${rank}.',
+        'log_select_card_then_attack': 'To start an attack, first select your card and press the "Attack" button!',
+        'log_cannot_attack_from_back_row': 'Cannot attack with a card from the back row!',
+        'log_invalid_attack_target_position': '[${rank}] is in a position that cannot be attacked!',
+        'log_attack_start': 'Attack by [${rank}] begins!',
+        'log_attack_fail_no_power': '...Attack failed due to insufficient power.',
+        'log_card_already_attacked': '[${rank}] is already tired (has attacked).',
+        'log_attack_damage': 'Dealt ${totalAtk} damage to opponent\'s [${targetRank}]!',
+        'log_target_destroyed': 'Shattered [${rank}] with tremendous sound magic!',
+        'log_opponent_cards_flipped': 'Opponent\'s cards are revealed!',
+        'log_placement_complete_player_turn': 'Placement complete. Your turn begins.',
+        'log_placement_complete_opponent_turn': 'Placement complete. Opponent\'s battle turn begins.',
+        'log_turn_end': 'Turn ended.',
+        'log_score_summary': '--- (You: ${playerScore}/5 | Opp: ${opponentScore}/5) ---',
+        'log_opponent_placing_facedown': 'Opponent is placing cards face down.',
+        'log_opponent_placement_done': 'Opponent\'s placement is complete. Moving to your placement.',
+        'log_skip_effect': 'Opponent\'s turn was skipped due to [SKIP] effect!',
+        'log_player_drew_card': 'You drew a card.',
+        'log_player_deck_empty': 'Your deck is empty!',
+        'log_opponent_turn_end': 'Opponent\'s turn ended. Your turn begins.',
+        'log_opponent_turn_start': 'Opponent\'s turn started!',
+        'log_opponent_drew_card': 'Opponent drew a card.',
+        'log_opponent_deck_empty': 'Opponent\'s deck is empty!',
+        'log_opponent_placed_card': 'Opponent placed [${rank}].',
+        'log_opponent_did_not_place': 'Opponent did not place a card..',
+        'log_opponent_injected_power': 'Opponent injected power into [${rank}]! (Current: ${p_atk}/${p_req})',
+        'log_opponent_did_not_inject': 'Opponent did not inject power into a card..',
+        'log_opponent_attack': 'Opponent\'s [${oppCardRank}] attacks your [${targetCardRank}] for ${totalOppAtk} damage!',
+        'log_player_card_destroyed': 'Your [${rank}] has been defeated!',
+        'log_opponent_no_target': 'Opponent\'s [${rank}] had no target to attack!',
+        'log_opponent_attack_fail_no_power': 'Opponent\'s [${rank}] could not attack due to insufficient power..',
+        'log_field_rotating': 'The field is rotating clockwise.',
+        'log_win': '★★★★★ YOU WIN! ★★★★★',
+        'log_lose': '------- YOU LOSE... -------',
+        'log_draw': '======= DRAW ========',
+        'log_player_mulligan': 'Your initial hand had no unit cards, so you will redraw.',
+        'log_player_mulligan_warning': 'Warning: Player has reached the mulligan limit. Your deck may have too few unit cards.',
+        'log_opponent_mulligan': 'Opponent\'s initial hand had no unit cards, so they will redraw.',
+        'log_opponent_mulligan_warning': 'Warning: Opponent has reached the mulligan limit. Their deck may have too few unit cards.',
+        'log_select_attack_target': 'Select a target to attack with [${rank}]!',
+        'log_special_not_implemented': 'Special move is not yet implemented!',
+        'log_player_first': 'You are going first.',
+        'log_opponent_first': 'The opponent is going first.',
+    },
+    ja: {
+        'adventure_battle': 'ADVENTURE / BATTLE',
+        'deck_editor': 'DECK EDITOR (100 Slots)',
+        'card_collection': 'CARD COLLECTION',
+        'game_settings': 'GAME SETTINGS',
+        'select_challenge': 'SELECT YOUR CHALLENGE',
+        'vs_random_ai': 'VS RANDOM AI',
+        'back_to_title': 'タイトルへ戻る',
+        'settings': 'SETTINGS',
+        'language_toggle': 'LANGUAGE: 日本語',
+        'sound_settings': 'BGM / SE',
+        'collection': 'COLLECTION',
+        'choose_deck_slot': 'CHOOSE DECK SLOT',
+        'deck_editor_title': 'DECK EDITOR',
+        'card_pool': 'CARD POOL',
+        'deck_count_label': 'DECK',
+        'save_exit': 'SAVE & EXIT',
+        'cancel': 'CANCEL',
+        // Alerts & Prompts
+        'deck_30_cards_max': 'デッキは30枚までです。',
+        'same_card_2_max': '同じカードは2枚までしか入れられません。',
+        'deck_must_be_30': 'デッキはちょうど30枚にしてください。現在の枚数: ',
+        'deck_not_saved': 'このスロットにはデッキが保存されていません。',
+        'deck_not_30': 'このデッキは30枚ではありません。(現在: ',
+        'prompt_deck_name': 'Name:',
+        // Game Over
+        'win_message': 'あなたの勝利！',
+        'lose_message': 'あなたの敗北...',
+        'draw_message': '引き分け',
+        // Game Logs
+        'log_support_card_not_in_battle': 'サポートカードを使用できません。',
+        'log_use_2draw': '【2DRAW】を使用！カードを2枚引いた。！',
+        'log_deck_empty': '山札が空だ。！',
+        'log_use_heal': '【HEAL】を使用！回復させる自分のカードを選んでほしいぴょん！',
+        'log_use_skip': '【SKIP】を使用！相手のターンをスキップする。！',
+        'log_support_card_not_on_place': '配置中はサポートカードを使用できません。',
+        'log_must_press_attack_button': '攻撃には「攻撃」ボタンを押して対象を選択する。！',
+        'log_select_unit_from_hand': '手札から配置したいユニットカードを選択してください。',
+        'log_support_card_no_place': 'サポートカードは場に出せません。',
+        'log_card_placed': '${rank}を配置しました。',
+        'log_only_unit_can_be_healed': 'ユニットカードのみ回復できます。',
+        'log_heal_success': '【${rank}】のHPが3回復した！ (現在HP: ${hp})',
+        'log_card_returned_to_hand': '${rank}を手札に戻しました。',
+        'log_power_injected': '${rank}にパワーを注入。',
+        'log_select_card_then_attack': '攻撃を開始するには、まず自分のカードを選択して「攻撃」ボタンを押してください。！',
+        'log_cannot_attack_from_back_row': '後列のカードでは攻撃できません！',
+        'log_invalid_attack_target_position': '【${rank}】は攻撃できない位置だ。！',
+        'log_attack_start': '【${rank}】の攻撃を開始！',
+        'log_attack_fail_no_power': '……パワー不足で攻撃が不発に終わった。。',
+        'log_card_already_attacked': '【${rank}】はもうお疲れだ。（攻撃済み）。',
+        'log_attack_damage': '相手の【${targetRank}】に ${totalAtk} ダメージ与えた。！',
+        'log_target_destroyed': '★凄まじい音魔法で【${rank}】を粉砕した。！',
+        'log_opponent_cards_flipped': '相手のカードがオープンされる！',
+        'log_placement_complete_player_turn': '配置完了。あなたのターンを開始します。',
+        'log_placement_complete_opponent_turn': '配置完了。相手のバトルターンを開始します。',
+        'log_turn_end': 'ターン終了。',
+        'log_score_summary': '--- (自分: ${playerScore}/5 | 相手: ${opponentScore}/5) ---',
+        'log_opponent_placing_facedown': '相手がカードを裏向きで配置します。',
+        'log_opponent_placement_done': '相手の配置完了。あなたの配置に移ります。',
+        'log_skip_effect': '【SKIP】の効果で相手のターンはスキップされた。！',
+        'log_player_drew_card': 'あなたはカードを1枚引いた。',
+        'log_player_deck_empty': 'あなたの山札はもうない！',
+        'log_opponent_turn_end': '相手のターン終了。あなたのターン開始。',
+        'log_opponent_turn_start': '相手の行動を開始した。！',
+        'log_opponent_drew_card': '相手はカードを1枚引いた。',
+        'log_opponent_deck_empty': '相手の山札はもうない！',
+        'log_opponent_placed_card': '相手は【${rank}】を配置した。！',
+        'log_opponent_did_not_place': '相手はカードを配置しなかった。。',
+        'log_opponent_injected_power': '相手は【${rank}】にパワーを注入した。！ (現在: ${p_atk}/${p_req})',
+        'log_opponent_did_not_inject': '相手はカードにパワーを注入しなかった。。',
+        'log_opponent_attack': '相手の【${oppCardRank}】があなたの【${targetCardRank}】に ${totalOppAtk} ダメージ与えた。！',
+        'log_player_card_destroyed': 'あなたの【${rank}】は撃破された。！',
+        'log_opponent_no_target': '相手の【${rank}】は攻撃対象がいなかった。！',
+        'log_opponent_attack_fail_no_power': '相手の【${rank}】はパワーが足りないので攻撃できなかった。。',
+        'log_field_rotating': 'フィールドが時計回りに回転します。',
+        'log_win': '★★★★★ あなたの勝利です！ ★★★★★',
+        'log_lose': '------- あなたの敗北です... -------',
+        'log_draw': '======= 引き分けです ========',
+        'log_player_mulligan': 'あなたの初期手札にユニットカードがなかったので、引き直します。',
+        'log_player_mulligan_warning': '警告: プレイヤーのマリガン上限に達しました。デッキにユニットカードが少ない可能性があります。',
+        'log_opponent_mulligan': '相手の初期手札にユニットカードがなかったので、引き直します。',
+        'log_opponent_mulligan_warning': '警告: 相手のマリガン上限に達しました。デッキにユニットカードが少ない可能性があります。',
+        'log_select_attack_target': '【${rank}】で攻撃対象を選択してください。！',
+        'log_special_not_implemented': '特別技はまだ実装されていない。！',
+        'log_player_first': 'あなたが先行です。',
+        'log_opponent_first': '相手が先行です。',
+    }
+};
+
+function getText(key) {
+    // Default to Japanese if state or language isn't set yet
+    const lang = state ? state.language : 'ja';
+    return languageData[lang][key] || `(no text for ${key})`;
+}
+
+function getFormattedText(key, params = {}) {
+    let text = getText(key);
+    for (const p_key in params) {
+        // Use a regular expression to replace all occurrences of the placeholder
+        const regex = new RegExp(`\\$\\{${p_key}\\}`, 'g');
+        text = text.replace(regex, params[p_key]);
+    }
+    return text;
+}
+
+function updateUIText() {
+    document.querySelectorAll('[data-lang-key]').forEach(el => {
+        const key = el.dataset.langKey;
+        el.innerHTML = getText(key);
+    });
+     // Also update dynamic parts if needed, e.g., titles of screens
+    document.getElementById('editor-title').textContent = getText('deck_editor_title');
+}
+
+function toggleLanguage() {
+    state.language = (state.language === 'ja') ? 'en' : 'ja';
+    updateUIText();
+}
+
 const SUITS = ['fire', 'water', 'wind', 'earth'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const SUPPORTS = ['2DRAW','HEAL','SKIP'];
@@ -192,6 +399,7 @@ let state = getInitialState(); // Initialize state when script loads
 // Function to get the initial game state
 function getInitialState() {
     return {
+        language: 'ja',
         editIdx: 1, 
         editCards: [], 
         player: { hand: [], field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0, attackedIds: [], powerInjected: false },
@@ -245,12 +453,12 @@ function createCardUI(c, isPool) {
     div.onclick = () => {
         if(isPool) {
             if (state.editCards.length >= 30) {
-                alert("デッキは30枚までです。");
+                alert(getText('deck_30_cards_max'));
                 return;
             }
             const count = state.editCards.filter(deckCard => deckCard.suit === c.suit && deckCard.rank === c.rank).length;
             if (count >= 2) {
-                alert("同じカードは2枚までしか入れられません。");
+                alert(getText('same_card_2_max'));
                 return;
             }
             state.editCards.push(new Card(c.suit, c.rank, c.type)); 
@@ -275,11 +483,11 @@ function renderEditor() {
 
 function saveDeck() {
     if (state.editCards.length !== 30) {
-        alert("デッキはちょうど30枚にしてください。現在の枚数: " + state.editCards.length);
+        alert(getText('deck_must_be_30') + state.editCards.length);
         return;
     }
     localStorage.setItem(`deck_cards_${state.editIdx}`, JSON.stringify(state.editCards));
-    const name = prompt("Name:", localStorage.getItem(`deck_name_${state.editIdx}`) || `DECK ${state.editIdx}`);
+    const name = prompt(getText('prompt_deck_name'), localStorage.getItem(`deck_name_${state.editIdx}`) || `DECK ${state.editIdx}`);
     if(name) localStorage.setItem(`deck_name_${state.editIdx}`, name);
     openDeckList('edit');
 }
@@ -289,6 +497,7 @@ function saveDeck() {
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+    updateUIText(); // Update text every time a screen is shown
     if (id === 'collection-screen') renderCollection();
 }
 
@@ -372,30 +581,31 @@ function createCardEl(card) {
     
 function useSupportCard(card) {
     if (state.gameOver || state.turn !== 'player') {
-        addLog("サポートカードを使用できません。");
+        addLog(getText('log_support_card_not_in_battle'));
         return;
     }
 
     let cardUsed = false;
     switch (card.rank) {
         case '2DRAW':
-            addLog(`【${card.rank}】を使用！カードを2枚引いた。！`);
+            addLog(getText('log_use_2draw'));
             for (let i = 0; i < 2; i++) {
                 if (state.player.deck.length > 0) {
                     state.player.hand.push(state.player.deck.shift());
                 } else {
-                    addLog("山札が空だ。！");
+                    addLog(getText('log_deck_empty'));
                     break;
                 }
             }
             cardUsed = true;
             break;
         case 'HEAL':
-            addLog(`【${card.rank}】を使用！ しかし、現在このカードは効果を発揮しません。`);
+            addLog(getText('log_use_heal'));
+            state.isHealing = true; // 「今から回復するよ」というモードにする
             cardUsed = true;
             break;
         case 'SKIP':
-            addLog(`【${card.rank}】を使用！相手のターンをスキップする。！`);
+            addLog(getText('log_use_skip'));
             state.skipOpponentTurn = true; // Set a flag to skip opponent's turn
             cardUsed = true;
             break;
@@ -421,7 +631,7 @@ function render() {
 
             if (state.canPlaceCard) { // --- 配置フェーズ中の処理 ---
                 if (card.isSupport) {
-                    addLog("配置中はサポートカードを使用できません。");
+                    addLog(getText('log_support_card_not_on_place'));
                 } else {
                     state.selectedCard = card; // ユニットカードは選択
                     render();
@@ -490,7 +700,7 @@ function renderField(id, field, isOpponent) {
                         handleAttack(card);
                         hideAttackMenu(); // Hide menu after attack attempt
                     } else {
-                        addLog("攻撃には「攻撃」ボタンを押して対象を選択する。！");
+                        addLog(getText('log_must_press_attack_button'));
                     }
                 } else { // Player's own card clicked
                     if (state.isHealing) {
@@ -510,11 +720,11 @@ function renderField(id, field, isOpponent) {
 
 function placeCard(i) {
     if (!state.selectedCard) {
-        addLog("手札から配置したいユニットカードを選択してください。");
+        addLog(getText('log_select_unit_from_hand'));
         return;
     }
     if (state.selectedCard.isSupport) {
-        addLog("サポートカードは場に出せません。");
+        addLog(getText('log_support_card_no_place'));
         return;
     }
     
@@ -522,7 +732,7 @@ function placeCard(i) {
 
     state.player.field[i] = cardToPlace;
     state.player.hand = state.player.hand.filter(c => c !== cardToPlace);
-    addLog(`${cardToPlace.rank}を配置しました。`);
+    addLog(getFormattedText('log_card_placed', { rank: cardToPlace.rank }));
     state.selectedCard = null;
     hideAttackMenu();
     render();
@@ -530,11 +740,11 @@ function placeCard(i) {
 
 function healCard(targetCard) {
     if (!targetCard || targetCard.isSupport) {
-        addLog("ユニットカードのみ回復できます。");
+        addLog(getText('log_only_unit_can_be_healed'));
         return;
     }
     targetCard.hp = Math.min(targetCard.maxHp, targetCard.hp + 3);
-    addLog(`【${targetCard.rank}】のHPが3回復した！ (現在HP: ${targetCard.hp})`);
+    addLog(getFormattedText('log_heal_success', { rank: targetCard.rank, hp: targetCard.hp }));
     
     state.isHealing = false; // 回復モードを終了
     render();
@@ -543,7 +753,7 @@ function healCard(targetCard) {
 function handleFieldClick(card, i) {
     if (state.canPlaceCard) {
         state.player.hand.push(card); state.player.field[i] = null;
-        addLog(`${card.rank}を手札に戻しました。`);
+        addLog(getFormattedText('log_card_returned_to_hand', { rank: card.rank }));
         hideAttackMenu(); // Hide menu if card is moved
     } else { // Battle phase
         if (state.isHealing) { // If in healing mode, heal the card.
@@ -567,7 +777,7 @@ function handlePowerInject() {
     const c = state.selectedCard;
     if (c && state.player.field.includes(c) && c.attachedPower < c.requiredPower) {
         c.attachedPower++; state.player.powerInjected = true;
-        addLog(`${c.rank}にパワーを注入。`);
+        addLog(getFormattedText('log_power_injected', { rank: c.rank }));
         hideAttackMenu(); // Hide menu after power injection
         render();
     }
@@ -575,7 +785,7 @@ function handlePowerInject() {
 
 function handleAttack(targetCard) {
     if (state.canPlaceCard || !state.selectedCard || !state.isAttacking) { // Must be in attacking state
-        addLog("攻撃を開始するには、まず自分のカードを選択して「攻撃」ボタンを押してください。！");
+        addLog(getText('log_select_card_then_attack'));
         return;
     }
     
@@ -584,27 +794,27 @@ function handleAttack(targetCard) {
 
     // 攻撃者が前衛にいるかチェック
     if (attackerIndex === -1 || attackerIndex > 2) {
-        addLog("後列のカードでは攻撃できません！");
+        addLog(getText('log_cannot_attack_from_back_row'));
         return;
     }
 
     // Check if the targetCard is in the opponent's back row (slots 0, 1, 2)
     const targetCardIndex = state.opponent.field.indexOf(targetCard);
     if (targetCardIndex === -1 || targetCardIndex >= 3) { // If not found or in opponent's visual front row (slots 3,4,5)
-        addLog(`【${targetCard.rank}】は攻撃できない位置だ。！`);
+        addLog(getFormattedText('log_invalid_attack_target_position', { rank: targetCard.rank }));
         return;
     }
     
     // 攻撃前のログ
-    addLog(`【${attacker.rank}】の攻撃を開始！`);
+    addLog(getFormattedText('log_attack_start', { rank: attacker.rank }));
 
     if (attacker.attachedPower < attacker.requiredPower) {
-        addLog(`……パワー不足で攻撃が不発に終わった。。`);
+        addLog(getText('log_attack_fail_no_power'));
         return;
     }
 
     if (state.player.attackedIds.includes(attacker.id)) {
-        addLog(`【${attacker.rank}】はもうお疲れだ。（攻撃済み）。`);
+        addLog(getFormattedText('log_card_already_attacked', { rank: attacker.rank }));
         return;
     }
     
@@ -613,7 +823,7 @@ function handleAttack(targetCard) {
     state.player.attackedIds.push(attacker.id);
     
     // ダメージのログ（ここが大事！）
-    addLog(`相手の【${targetCard.rank}】に ${totalAtk} ダメージ与えた。！`);
+    addLog(getFormattedText('log_attack_damage', { targetRank: targetCard.rank, totalAtk: totalAtk }));
 
     if (targetCard.hp <= 0) {
         const idx = state.opponent.field.indexOf(targetCard);
@@ -622,7 +832,8 @@ function handleAttack(targetCard) {
             state.opponent.grave++;
             state.player.points++; // プレイヤーのポイントを増やす
         }
-        addLog(`★凄まじい音魔法で【${targetCard.rank}】を粉砕した。！`);
+        addLog(getFormattedText('log_target_destroyed', { rank: targetCard.rank }));
+        if (checkWin()) return; // ★★★ Check for win immediately ★★★
     }
     
     state.selectedCard = null;
@@ -645,19 +856,19 @@ function confirmPlacement() {
     });
 
     if (flipped) {
-        addLog("相手のカードがオープンされる！");
+        addLog(getText('log_opponent_cards_flipped'));
         render(); // Show the flipped cards
     }
 
     if (state.turn === 'player') {
         // Player's turn to start battle
         document.getElementById('status-text').textContent = "自ターン";
-        addLog("配置完了。あなたのターンを開始します。");
+        addLog(getText('log_placement_complete_player_turn'));
         render();
     } else {
         // Opponent's turn to start battle
         document.getElementById('status-text').textContent = "相手ターン";
-        addLog("配置完了。相手のバトルターンを開始します。");
+        addLog(getText('log_placement_complete_opponent_turn'));
         // Use setTimeout to give player a moment to see the flipped cards
         setTimeout(opponentAI, 1000);
     }
@@ -665,8 +876,8 @@ function confirmPlacement() {
 
 function handleEndTurn() {
     state.player.powerInjected = false; state.player.attackedIds = [];
-    addLog("ターン終了。"); 
-    addLog(`--- (自分: ${state.player.points}/5 | 相手: ${state.opponent.points}/5) ---`);
+    addLog(getText('log_turn_end')); 
+    addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
     state.turn = 'opponent'; document.getElementById('status-text').textContent = "相手ターン";
     rotateFields();
     render(); 
@@ -676,7 +887,7 @@ function handleEndTurn() {
 function opponentAI() {
     // Initial placement logic for opponent going first
     if (state.isOpponentInitialPlacement) {
-        addLog("相手がカードを裏向きで配置します。");
+        addLog(getText('log_opponent_placing_facedown'));
         const placeableUnits = state.opponent.hand.filter(card => !card.isSupport);
         if (placeableUnits.length > 0 && state.opponent.field.includes(null)) {
             const cardToPlay = placeableUnits[0];
@@ -692,42 +903,42 @@ function opponentAI() {
         // Transition to player's placement phase
         state.canPlaceCard = true;
         state.statusText = "カードを配置してください。";
-        addLog("相手の配置完了。あなたの配置に移ります。");
+        addLog(getText('log_opponent_placement_done'));
         render();
         return; // End AI turn here for initial placement
     }
 
     // --- Regular AI Turn ---
     if (state.skipOpponentTurn) {
-        addLog("【SKIP】の効果で相手のターンはスキップされた。！");
+        addLog(getText('log_skip_effect'));
         state.skipOpponentTurn = false;
         // ターンエンド処理を模倣 (ログ、回転、ドロー、ターン変更)
-        addLog(`--- (自分: ${state.player.points}/5 | 相手: ${state.opponent.points}/5) ---`);
+        addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
         rotateFields();
         if (state.player.deck.length > 0) {
             state.player.hand.push(state.player.deck.shift());
-            addLog("あなたはカードを1枚引いた。");
+            addLog(getText('log_player_drew_card'));
         } else {
-            addLog("あなたの山札はもうない！");
+            addLog(getText('log_player_deck_empty'));
         }
         state.turn = 'player';
         document.getElementById('status-text').textContent = "自ターン";
-        addLog("相手のターン終了。あなたのターン開始。");
+        addLog(getText('log_opponent_turn_end'));
         render();
         checkWin();
         return; // スキップ終了
     }
 
-    addLog("相手の行動を開始した。！");
+    addLog(getText('log_opponent_turn_start'));
 
     // Opponent draws a card
     if (state.opponent.deck.length > 0) {
         const drawnCard = state.opponent.deck.shift();
         state.opponent.hand.push(drawnCard);
         state.opponent.handCount = state.opponent.hand.length;
-        addLog("相手はカードを1枚引いた。");
+        addLog(getText('log_opponent_drew_card'));
     } else {
-        addLog("相手の山札はもうない！");
+        addLog(getText('log_opponent_deck_empty'));
     }
 
     const cardsOnOpponentField = state.opponent.field.filter(c => c !== null);
@@ -746,10 +957,10 @@ function opponentAI() {
             state.opponent.field[emptySlotIndex] = cardToPlay;
             state.opponent.hand = state.opponent.hand.filter(c => c !== cardToPlay);
             state.opponent.handCount = state.opponent.hand.length;
-            addLog(`相手は【${cardToPlay.rank}】を配置した。！`);
+            addLog(getFormattedText('log_opponent_placed_card', { rank: cardToPlay.rank }));
         }
     } else {
-        addLog(`相手はカードを配置しなかった。。`);
+        addLog(getText('log_opponent_did_not_place'));
     }
 
     // Opponent tries to power up a card
@@ -757,9 +968,9 @@ function opponentAI() {
     if (cardToPowerUp) {
         cardToPowerUp.attachedPower++;
         state.opponent.power--;
-        addLog(`相手は【${cardToPowerUp.rank}】にパワーを注入した。！ (現在: ${cardToPowerUp.attachedPower}/${cardToPowerUp.requiredPower})`);
+        addLog(getFormattedText('log_opponent_injected_power', { rank: cardToPowerUp.rank, p_atk: cardToPowerUp.attachedPower, p_req: cardToPowerUp.requiredPower }));
     } else if (cardsOnOpponentField.length > 0) {
-        addLog(`相手はカードにパワーを注入しなかった。。`);
+        addLog(getText('log_opponent_did_not_inject'));
     }
 
     // Opponent attacks
@@ -776,7 +987,7 @@ function opponentAI() {
                     // Attack player's first available front row card
                     const targetCard = playerFrontRowCards[0];
                     targetCard.hp -= totalOppAtk;
-                    addLog(`相手の【${oppCard.rank}】があなたの【${targetCard.rank}】に ${totalOppAtk} ダメージ与えた。！`);
+                    addLog(getFormattedText('log_opponent_attack', { oppCardRank: oppCard.rank, targetCardRank: targetCard.rank, totalOppAtk: totalOppAtk }));
                     opponentAttackedIds.push(oppCard.id); // 攻撃済みとして登録
                     if (targetCard.hp <= 0) {
                         const idx = state.player.field.indexOf(targetCard);
@@ -784,14 +995,15 @@ function opponentAI() {
                             state.player.field[idx] = null;
                             state.player.grave++;
                             state.opponent.points++; // 相手のポイントを増やす
-                            addLog(`あなたの【${targetCard.rank}】は撃破された。！`);
+                            addLog(getFormattedText('log_player_card_destroyed', { rank: targetCard.rank }));
+                            if (checkWin()) return; // ★★★ Check for win immediately ★★★
                         }
                     }
                 } else {
-                    addLog(`相手の【${oppCard.rank}】は攻撃対象がいなかった。！`);
+                    addLog(getFormattedText('log_opponent_no_target', { rank: oppCard.rank }));
                 }
             } else if (oppCard) { // 攻撃済みチェックの追加
-                addLog(`相手の【${oppCard.rank}】はパワーが足りないので攻撃できなかった。。`);
+                addLog(getFormattedText('log_opponent_attack_fail_no_power', { rank: oppCard.rank }));
             }
     });
 
@@ -799,26 +1011,26 @@ function opponentAI() {
     state.opponent.power = 5; // Restore opponent's power
     state.player.powerInjectedThisTurn = false; // Reset player's power injection flag
     
-    addLog(`--- (自分: ${state.player.points}/5 | 相手: ${state.opponent.points}/5) ---`);
+    addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
     rotateFields();
 
     // Player draws a card
     if (state.player.deck.length > 0) {
         state.player.hand.push(state.player.deck.shift());
-        addLog("あなたはカードを1枚引いた。");
+        addLog(getText('log_player_drew_card'));
     } else {
-        addLog("あなたの山札はもうない！");
+        addLog(getText('log_player_deck_empty'));
     }
 
     state.turn = 'player';
     document.getElementById('status-text').textContent = "自ターン";
-    addLog("相手のターン終了。あなたのターン開始。");
+    addLog(getText('log_opponent_turn_end'));
     render();
     checkWin(); // Check for game over after opponent's turn
 }
 
 function rotateFields() {
-    addLog("フィールドが時計回りに回転します。");
+    addLog(getText('log_field_rotating'));
     // Player's field
     const pField = state.player.field;
     if (!pField.every(c => c === null)) {
@@ -841,16 +1053,16 @@ function showGameOverScreen(result) {
     let message = '';
     switch (result) {
         case 'win':
-            message = "あなたの勝利！";
-            addLog("★★★★★ あなたの勝利です！ ★★★★★");
+            message = getText('win_message');
+            addLog(getText('log_win'));
             break;
         case 'lose':
-            message = "あなたの敗北...";
-            addLog("------- あなたの敗北です... -------");
+            message = getText('lose_message');
+            addLog(getText('log_lose'));
             break;
         case 'draw':
-            message = "引き分け";
-            addLog("======= 引き分けです ========");
+            message = getText('draw_message');
+            addLog(getText('log_draw'));
             break;
     }
     resultText.textContent = message;
@@ -863,7 +1075,7 @@ function showGameOverScreen(result) {
 }
 
 function checkWin() {
-    if (state.gameOver || state.canPlaceCard) return; // ゲーム中のみ判定
+    if (state.gameOver || state.canPlaceCard) return false; // ゲーム中のみ判定
 
     const playerHasFieldCards = state.player.field.some(c => c !== null);
     const opponentHasFieldCards = state.opponent.field.some(c => c !== null);
@@ -871,15 +1083,15 @@ function checkWin() {
     // 優先1: 場のカードでの決着
     if (!playerHasFieldCards && !opponentHasFieldCards) {
         showGameOverScreen('draw');
-        return;
+        return true;
     }
     if (!opponentHasFieldCards) {
         showGameOverScreen('win');
-        return;
+        return true;
     }
     if (!playerHasFieldCards) {
         showGameOverScreen('lose');
-        return;
+        return true;
     }
 
     // 優先2: ポイントでの決着
@@ -888,27 +1100,28 @@ function checkWin() {
 
     if (playerWinsByPoints && opponentWinsByPoints) {
         showGameOverScreen('draw');
-        return;
+        return true;
     }
     if (playerWinsByPoints) {
         showGameOverScreen('win');
-        return;
+        return true;
     }
     if (opponentWinsByPoints) {
         showGameOverScreen('lose');
-        return;
+        return true;
     }
+    return false;
 }
 
 function startGameWithDeck(deckId) {
     const savedDeck = localStorage.getItem(`deck_cards_${deckId}`);
     if (!savedDeck) {
-        alert("このスロットにはデッキが保存されていません。");
+        alert(getText('deck_not_saved'));
         return;
     }
     const parsedDeck = JSON.parse(savedDeck);
     if (parsedDeck.length !== 30) {
-        alert(`このデッキは30枚ではありません。(現在: ${parsedDeck.length}枚)`);
+        alert(getText('deck_not_30') + parsedDeck.length + ')');
         return;
     }
 
@@ -927,7 +1140,7 @@ function startGameWithDeck(deckId) {
     // マリガン処理 (プレイヤー)
     let playerMulliganCount = 0;
     while (!state.player.hand.some(c => !c.isSupport) && playerMulliganCount < 5) { // 最大5回までマリガン
-        addLog("あなたの初期手札にユニットカードがなかったので、引き直します。");
+        addLog(getText('log_player_mulligan'));
         state.player.deck.push(...state.player.hand); // 手札をデッキに戻す
         for (let i = state.player.deck.length - 1; i > 0; i--) { // デッキを再シャッフル
             const j = Math.floor(Math.random() * (i + 1));
@@ -937,7 +1150,7 @@ function startGameWithDeck(deckId) {
         playerMulliganCount++;
     }
     if (playerMulliganCount >= 5) {
-        addLog("警告: プレイヤーのマリガン上限に達しました。デッキにユニットカードが少ない可能性があります。");
+        addLog(getText('log_player_mulligan_warning'));
     }
 
     // 2. Opponent's deck setup (Random)
@@ -956,7 +1169,7 @@ function startGameWithDeck(deckId) {
     // マリガン処理 (相手)
     let opponentMulliganCount = 0;
     while (!state.opponent.hand.some(c => !c.isSupport) && opponentMulliganCount < 5) { // 最大5回までマリガン
-        addLog("相手の初期手札にユニットカードがなかったので、引き直します。");
+        addLog(getText('log_opponent_mulligan'));
         state.opponent.deck.push(...state.opponent.hand); // 手札をデッキに戻す
         for (let i = state.opponent.deck.length - 1; i > 0; i--) { // デッキを再シャッフル
             const j = Math.floor(Math.random() * (i + 1));
@@ -966,7 +1179,7 @@ function startGameWithDeck(deckId) {
         opponentMulliganCount++;
     }
     if (opponentMulliganCount >= 5) {
-        addLog("警告: 相手のマリガン上限に達しました。デッキにユニットカードが少ない可能性があります。");
+        addLog(getText('log_opponent_mulligan_warning'));
     }
 
     // 3. Start Game
@@ -982,13 +1195,13 @@ function initBattle() {
 document.getElementById('menu-attack-btn').onclick = () => {
     if (state.selectedCard) {
         state.isAttacking = true;
-        addLog(`【${state.selectedCard.rank}】で攻撃対象を選択してください。！`);
+        addLog(getFormattedText('log_select_attack_target', { rank: state.selectedCard.rank }));
         render(); // Rerender to show potential target highlights
     }
 };
 
 document.getElementById('menu-special-btn').onclick = () => {
-    addLog("特別技はまだ実装されていない。！");
+    addLog(getText('log_special_not_implemented'));
     hideAttackMenu();
     state.selectedCard = null;
     render();
@@ -1016,7 +1229,7 @@ function startRoulette() {
                 state.isOpponentInitialPlacement = true; // 相手の特殊初期配置モードをON
                 state.canPlaceCard = false; // プレイヤーはまだ配置できない
                 state.statusText = "相手が配置しています...";
-                addLog(state.turn === 'player' ? "あなたが先行です。" : "相手が先行です。");
+                addLog(getText(state.turn === 'player' ? 'log_player_first' : 'log_opponent_first'));
                 render();
                 // 相手の特殊初期配置AIを呼ぶ (opponentAI関数内でプレイヤーの配置フェーズに遷移する)
                 setTimeout(opponentAI, 1000);
