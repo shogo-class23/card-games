@@ -979,6 +979,11 @@ function opponentAI() {
                 return;
             }
 
+            const oppCardIndex = state.opponent.field.indexOf(oppCard);
+            if (oppCardIndex > 2) { // 後列のカードでは攻撃できないルールを相手にも適用
+                return;
+            }
+
             if (oppCard.attachedPower >= oppCard.requiredPower) { // Check power requirement
                 const totalOppAtk = oppCard.value; // Now only uses card's value for attack
                 const playerFrontRowCards = [state.player.field[0], state.player.field[1], state.player.field[2]].filter(p => p !== null);
