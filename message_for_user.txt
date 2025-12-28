@@ -13,9 +13,13 @@ Here's a summary of the modifications:
         *   **Shape determination:** It dynamically determines `shapeClass` (`star-mark`, `circle-mark`, `triangle-mark`, `pattern-mark pattern-${p}`, or `square-mark`) based on the `card.powerName` using the mapping you specified.
         *   **New HTML structure:** The `div.innerHTML` has been updated to include a `symbol-container` with a `common-mark` div with the determined `shapeClass`, and the `powerName` overlaid on top.
         *   The combined `sizeName`, `powerName`, `raceName` is displayed at the top-left, and the `P/ATK` values are at the bottom.
-    *   **`else` (for "普通のトランプ" / normal trump cards)**: This block has been restored to include the `hp`, `rank`, `suit`, and **the `P:/ATK` display**, similar to its previous more complete version.
+    *   **`else` (for "普通のトランプ" / normal trump cards)**: This block has been restored to include the `hp`, `rank`, `suit`, and the `P:/ATK` display, similar to its previous more complete version.
 
 3.  **Added CSS rules:**
     *   New CSS rules for `.common-mark`, `.star-mark`, `.circle-mark`, `.triangle-mark`, `.square-mark`, and `.pattern-mark` have been added to the `<style>` section of `index.html`. These define the visual appearance of the power shapes.
 
-These changes should correctly implement the new rendering styles for your cards.
+4.  **Modified `checkWin()` function:**
+    *   The victory condition based on field annihilation (`playerHasFieldCards`, `opponentHasFieldCards`) has been **removed**.
+    *   The game now only uses the **"first to 5 points"** condition for victory (or draw if both reach 5 simultaneously). This addresses your concern about the "strange" victory conditions.
+
+These changes should correctly implement the new rendering styles and updated victory conditions for your game.

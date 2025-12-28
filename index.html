@@ -1438,36 +1438,19 @@ function showGameOverScreen(result) {
 function checkWin() {
     if (state.gameOver || state.canPlaceCard) return false; // ゲーム中のみ判定
 
-    const playerHasFieldCards = state.player.field.some(c => c !== null);
-    const opponentHasFieldCards = state.opponent.field.some(c => c !== null);
-
-    // 優先1: 場のカードでの決着
-    if (!playerHasFieldCards && !opponentHasFieldCards) {
-        showGameOverScreen('draw');
-        return true;
-    }
-    if (!opponentHasFieldCards) {
-        showGameOverScreen('win');
-        return true;
-    }
-    if (!playerHasFieldCards) {
-        showGameOverScreen('lose');
-        return true;
-    }
-
-    // 優先2: ポイントでの決着
+    // ポイントでの決着 (5点先取)
     const playerWinsByPoints = state.player.points >= 5;
     const opponentWinsByPoints = state.opponent.points >= 5;
 
-    if (playerWinsByPoints && opponentWinsByPoints) {
+    if (playerWinsByPoints && opponentWinsByPoints) { // 両者5点に到達した場合は引き分け
         showGameOverScreen('draw');
         return true;
     }
-    if (playerWinsByPoints) {
+    if (playerWinsByPoints) { // プレイヤーが5点に到達
         showGameOverScreen('win');
         return true;
     }
-    if (opponentWinsByPoints) {
+    if (opponentWinsByPoints) { // 相手が5点に到達
         showGameOverScreen('lose');
         return true;
     }
