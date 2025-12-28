@@ -797,14 +797,8 @@ function createCardEl(card) {
     } else if (card.sizeName && card.powerName && card.raceName) {
         // ★【3つ型モンスター】の新しい配置だぴょん！
         div.innerHTML = `
-            <div class="hp-badge">${card.hp}/${card.maxHp}</div>
-            
-            <div style="font-size:0.45em; text-align:left; position:absolute; top:3px; left:3px; line-height:1.1; font-weight:bold; color:#333;">
-                ${card.sizeName}<br>${card.raceName}
-            </div>
-
-            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:100%; text-align:center; font-size:0.7em; font-weight:bold; color:#333;">
-                ${card.powerName}
+            <div style="font-size:0.5em; text-align:center; width:100%; position:absolute; top:15px; left:0; line-height:1.1; white-space:pre-wrap; font-weight:bold; color:#333;">
+                ${card.sizeName}<br>${card.powerName}<br>${card.raceName}
             </div>
 
             <div style="font-size:0.5em; position:absolute; bottom:3px; width:100%; text-align:center; font-weight:bold; color:#333;">
