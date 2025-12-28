@@ -101,6 +101,23 @@
         .slot:hover { border-color: var(--accent); }
         .editor-layout { display: flex; gap: 20px; width: 95%; height: 75vh; }
         .scroll-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 10px; overflow-y: auto; flex-grow: 1; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; }
+        /* マークの共通設定 */
+        .common-mark { width: 100%; height: 100%; background: #666; position: absolute; }
+
+        /* 星の形（簡易版） */
+        .star-mark { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); background: #FFD700; }
+
+        /* 丸の形 */
+        .circle-mark { border-radius: 50%; background: #FF7B7B; }
+
+        /* 三角の形 */
+        .triangle-mark { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background: #7BFFB8; }
+
+        /* 四角の形 */
+        .square-mark { border-radius: 4px; background: #7B8CFF; }
+
+        /* 模様（チェックなど）の例 */
+        .pattern-mark { background: #ccc; border: 2px dashed #333; }
     </style>
 </head>
 <body>
@@ -595,6 +612,7 @@ class Card {
         this.displayName = monsterName || rank; // Use monsterName if provided, otherwise use rank
         this.isSupport = (type === 'support' || SUPPORTS.includes(rank)); // Determine isSupport first
 
+        this.isTripleType = false; // Add this line
         this.sizeName = null; // New property
         this.powerName = null; // New property
         this.raceName = null; // New property
@@ -609,6 +627,7 @@ class Card {
             // But for now, we'll keep it as is, as the createCardEl will explicitly use sizeName/powerName/raceName
             // for display.
             if (this.sizeName && this.powerName && this.raceName) {
+                this.isTripleType = true; // Add this line
                 this.displayName = `${this.sizeName}\n${this.powerName}\n${this.raceName}`;
             }
 
@@ -780,44 +799,53 @@ function addLog(msg) {
 
 function createCardEl(card) {
     const div = document.createElement('div');
-    // 色は一旦今のまま（suitなど）を使うぴょん
-    div.className = `card ${card.suit}`;
+    div.className = `card ${card.suit || ''}`;
     div.dataset.cardId = card.id;
 
     if (card.isFaceDown) {
         div.className = 'card back';
         div.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 2em; color: white;">?</div>`;
-    } else if (card.isSupport) {
-        // 【サポートカード】左側にrankとsuit
-        div.innerHTML = `
-            <div class="hp-badge">SP</div>
-            <div style="font-size:0.75em; text-align:left; padding:3px; font-weight:bold;">${card.rank}</div>
-            <div style="font-size:0.6em; text-align:left; padding-left:3px;">${card.suit}</div>
-        `;
-    } else if (card.sizeName && card.powerName && card.raceName) {
-        // ★【3つ型モンスター】の新しい配置だぴょん！
+    } else if (card.isTripleType) { // Changed condition to isTripleType
+        // --- 1. 属性（パワー名）から「形」を決める魔法の辞書だぴょん！ ---
+        const p = card.powerName;
+        let shapeClass = "square-mark"; // その他は四角
+        
+        // 星の形
+        const stars = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ"];
+        // 丸の形
+        const circles = ["アングリー", "ジョイ", "ソロー", "プレシャー", "ラブ", "ヘイト", "フィアー", "サプライズ", "ウォント", "アバンダンド"];
+        // 三角の形
+        const triangles = ["ポイズン", "ダーティ", "ブラッド", "パラリシス", "イルネス", "アシッド", "タイヤード"];
+        // 模様系
+        const patterns = ["チェック", "ドット", "ワールプール", "メロディー"];
+
+        if (stars.includes(p)) shapeClass = "star-mark";
+        else if (circles.includes(p)) shapeClass = "circle-mark";
+        else if (triangles.includes(p)) shapeClass = "triangle-mark";
+        else if (patterns.includes(p)) shapeClass = `pattern-mark pattern-${p}`;
+
+        // --- 2. カードの見た目を作るぴょん！ ---
         div.innerHTML = `
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
             
-            <div style="position:absolute; top:2px; left:2px; width:50px; text-align:left; font-size:0.45em; line-height:1.1; font-weight:bold; color:#333; word-break:break-all;">
+            <div style="position:absolute; top:2px; left:2px; width:45px; text-align:left; font-size:0.42em; line-height:1.1; font-weight:bold; color:#333; word-break:break-all;">
                 ${card.sizeName}${card.powerName}${card.raceName}
             </div>
 
-            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:100%; text-align:center; font-size:0.75em; font-weight:bold; color:#333;">
-                ${card.powerName}
+            <div class="symbol-container" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:40px; height:40px;">
+                <div class="common-mark ${shapeClass}"></div>
+                <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.6em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
+                    ${card.powerName}
+                </div>
             </div>
 
-                    <div style="font-size:0.45em; position:absolute; bottom:3px; width:100%; text-align:center; font-weight:bold; color:#333;">
-                        P:${card.attachedPower}/${card.requiredPower} A:${card.value}
-                    </div>        `;
-    } else {
-        // 【普通のトランプ】今まで通りの表示
-        div.innerHTML = `
-            <div class="hp-badge">${card.hp}/${card.maxHp}</div>
-            <div style="font-size:1.2em; text-align:left; padding:3px; font-weight:bold;">${card.rank}</div>
-            <div style="font-size:0.8em; text-align:left; padding-left:3px;">${card.suit}</div>
-            <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>
+            <div style="position:absolute; bottom:3px; width:100%; text-align:center; font-size:0.5em; font-weight:bold; color:#333;">
+                P:${card.attachedPower}/${card.requiredPower} ATK:${card.value}
+            </div>
         `;
+    } else {
+        // トランプ用
+        div.innerHTML = `<div class="hp-badge">${card.hp}/${card.maxHp}</div><div style="font-size:1.2em; padding:3px;">${card.rank}<br>${card.suit}</div>`;
     }
     return div;
 }
