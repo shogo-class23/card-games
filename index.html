@@ -37,6 +37,7 @@
         .card.water { background-color: #FFFFFF; }
         .card.wind { background-color: #FFFFFF; }
         .card.earth { background-color: #FFFFFF; }
+        .card.special { background-color: #FFFFFF; }
         /* Thematic Colors for Cards */
         .color-light { background-color: #FFFF00; } /* Yellow */
         .color-dark { background-color: #333333; } /* Black */
@@ -205,6 +206,10 @@
                 <div id="battle-controls" style="display:none; flex-direction: column; gap: 10px; align-items: center;">
                     <button id="power-btn" class="game-button" style="background:#ccac00" onclick="handlePowerInject()">パワーを注入</button>
                     <button id="end-turn-btn" class="game-button" onclick="handleEndTurn()">ターン終了</button>
+                </div>
+                <div id="cointoss-controls" style="display:none; flex-direction: column; gap: 10px; align-items: center;">
+                    <div id="cointoss-result" style="font-size: 1.2em; font-weight: bold; color: yellow;"></div>
+                    <button id="cointoss-btn" class="game-button" style="background:#4CAF50" onclick="handleCoinToss()">コイントス！</button>
                 </div>
             </div>
             <div class="score-display player-score" id="ply-hp">20</div>
@@ -614,7 +619,7 @@ function getRequiredPowerFromSize(monsterName) {
 }
 
 class Card {
-    constructor(suit, rank, type = 'unit', monsterName = null) {
+    constructor(suit, rank, type = 'unit', monsterName = null, options = {}) {
         this.id = Math.random().toString(36).substr(2, 9);
         this.suit = suit;
         this.rank = rank;
@@ -623,11 +628,12 @@ class Card {
         this.displayName = monsterName || rank; // Use monsterName if provided, otherwise use rank
         this.isSupport = (type === 'support' || SUPPORTS.includes(rank)); // Determine isSupport first
 
-        this.isTripleType = false; // Add this line
-        this.sizeName = null; // New property
-        this.powerName = null; // New property
-        this.raceName = null; // New property
+        this.isTripleType = false;
         this.isDoubleType = false;
+        this.sizeName = null;
+        this.powerName = null;
+        this.raceName = null;
+
 
         if (monsterName) { // Logic for monster cards
             const parts = extractMonsterParts(monsterName);
@@ -662,6 +668,8 @@ class Card {
         
         this.hp = this.value; this.maxHp = this.value;
         this.attachedPower = 0;
+        
+        Object.assign(this, options);
     }
 }
 
@@ -682,8 +690,58 @@ function getInitialState() {
         gameOver: false,
         isAttacking: false, // New state to indicate if player is in attack mode
         isOpponentInitialPlacement: false,
-        isHealing: false // New state to indicate if player is choosing a card to heal
+        isHealing: false, // New state to indicate if player is choosing a card to heal
+        coinTossAttacker: null,
+        coinTossTarget: null
     };
+}
+
+function handleCoinToss() {
+    const attacker = state.coinTossAttacker;
+    const target = state.coinTossTarget;
+    if (!attacker || !target) return;
+
+    // Disable the button to prevent multiple clicks
+    document.getElementById('cointoss-btn').disabled = true;
+
+    const resultDiv = document.getElementById('cointoss-result');
+    const isHeads = Math.random() < 0.5;
+    
+    let damage = 0;
+    if (isHeads) {
+        damage = attacker.value; // value is 10 for Karikoin
+        resultDiv.textContent = '表！';
+        addLog(`コイントスは表！ ${attacker.rank}が${target.rank}に${damage}ダメージ！`);
+        target.hp -= damage;
+    } else {
+        damage = 0;
+        resultDiv.textContent = '裏...';
+        addLog(`コイントスは裏... ${attacker.rank}の攻撃は失敗。`);
+    }
+
+    state.player.attackedIds.push(attacker.id);
+
+    if (target.hp <= 0) {
+        const idx = state.opponent.field.indexOf(target);
+        if (idx !== -1) {
+            state.opponent.field[idx] = null;
+            state.opponent.grave++;
+            state.player.points++;
+        }
+        addLog(getFormattedText('log_target_destroyed', { rank: target.rank }));
+    }
+
+    // Reset state and UI after a short delay to show the result
+    setTimeout(() => {
+        state.coinTossAttacker = null;
+        state.coinTossTarget = null;
+        state.selectedCard = null; // Deselect card
+        resultDiv.textContent = '';
+        document.getElementById('status-text').textContent = '自ターン';
+        document.getElementById('cointoss-btn').disabled = false; // Re-enable button
+        render();
+        if (checkWin()) return; // Check for win after the toss is fully resolved
+    }, 1500);
 }
 
 
@@ -722,13 +780,24 @@ function enterEditor() {
         // Add a selection of monster cards
         const numMonsterCardsInPool = 20;
         let generatedMonsterNames = new Set();
-        while (editorCardPool.filter(c => c.monsterName).length < numMonsterCardsInPool) {
+        while (editorCardPool.filter(c => c.monsterName && !c.specialAbility).length < numMonsterCardsInPool) {
             const monsterCard = generateRandomMonsterCard();
             if (!generatedMonsterNames.has(monsterCard.displayName)) {
                 generatedMonsterNames.add(monsterCard.displayName);
                 editorCardPool.push(monsterCard);
             }
         }
+
+        // Add special card 'Karikoin'
+        const karikoin = new Card('special', 'カリコイン', 'unit', 'カリコイン', { 
+            hp: 7, 
+            maxHp: 7, 
+            value: 10, // Base value for display, actual damage is conditional
+            requiredPower: 2, 
+            powerName: 'プレイ', 
+            specialAbility: 'cointoss' 
+        });
+        editorCardPool.push(karikoin);
     }
     
     document.getElementById('editor-name-search-input').value = '';
@@ -834,6 +903,17 @@ function initializeAndRenderCollection() {
         for (let i = 0; i < 20; i++) {
             fullCollection.push(generateRandomMonsterCard());
         }
+
+        // Add special card 'Karikoin' to fullCollection
+        const karikoin = new Card('special', 'カリコイン', 'unit', 'カリコイン', { 
+            hp: 7, 
+            maxHp: 7, 
+            value: 10, // Base value for display, actual damage is conditional
+            requiredPower: 2, 
+            powerName: 'プレイ', 
+            specialAbility: 'cointoss' 
+        });
+        fullCollection.push(karikoin);
     }
     renderCardGrid(fullCollection);
 }
@@ -889,6 +969,25 @@ function createCardEl(card) {
     if (card.isFaceDown) {
         div.className = 'card back';
         div.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 2em; color: white;">?</div>`;
+    } else if (card.specialAbility === 'cointoss') {
+        const p = card.powerName; // Should be 'プレイ'
+        let shapeClass = "square-mark";
+        const stars = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ"];
+        if (stars.includes(p)) shapeClass = "star-mark";
+
+        div.innerHTML = `
+            <div class="hp-badge">${card.hp}/${card.maxHp}</div>
+            <div style="font-size:0.42em; text-align:center; padding:3px; font-weight:bold; line-height:1.1; word-break:break-all;">${card.rank}</div>
+                <div class="common-mark ${shapeClass}"></div>
+                <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
+                    スター
+                </div>
+            </div>
+
+            <div style="position:absolute; bottom:3px; width:100%; text-align:center; font-size:0.5em; font-weight:bold; color:#333;">
+                P:${card.attachedPower}/${card.requiredPower} A:${card.value}
+            </div>
+        `;
     } else if (card.isTripleType) { // Changed condition to isTripleType
         // --- 1. 属性（パワー名）から「形」を決める魔法の辞書だぴょん！ ---
         const p = card.powerName;
@@ -969,14 +1068,14 @@ function createCardEl(card) {
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
             <div style="font-size:1.2em; text-align:left; padding:3px; font-weight:bold;">${card.rank}</div>
             
-            <div style="position:absolute; top:50%; left:5px; transform:translateY(-50%); display:flex; gap: 2px;">
-                <div class="symbol-container" style="position:relative; width:30px; height:30px;">
+            <div style="position:absolute; top:50%; left:5px; transform:translateY(-50%); width:65px; height:30px;">
+                <div class="symbol-container" style="position:absolute; left:0px; top:0px; width:30px; height:30px;">
                     <div class="common-mark ${shapeClass1}"></div>
                     <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
                         ${displayPowerName1}
                     </div>
                 </div>
-                <div class="symbol-container" style="position:relative; width:30px; height:30px;">
+                <div class="symbol-container" style="position:absolute; left:35px; top:0px; width:30px; height:30px;"> <!-- 30px + 5px gap = 35px -->
                     <div class="common-mark ${shapeClass2}"></div>
                     <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
                         ${displayPowerName2}
@@ -1169,7 +1268,11 @@ function render() {
     document.getElementById('opp-graveyard').textContent = state.opponent.grave;
     document.getElementById('ply-graveyard').textContent = state.player.grave;
     document.getElementById('ok-btn').style.display = state.canPlaceCard ? 'block' : 'none';
-    document.getElementById('battle-controls').style.display = state.canPlaceCard ? 'none' : 'flex';
+    
+    const isCoinToss = state.coinTossAttacker !== null;
+    document.getElementById('battle-controls').style.display = (!state.canPlaceCard && !isCoinToss) ? 'flex' : 'none';
+    document.getElementById('cointoss-controls').style.display = isCoinToss ? 'flex' : 'none';
+
     document.getElementById('power-btn').disabled = state.player.powerInjected || state.turn !== 'player';
 }
 
@@ -1315,6 +1418,16 @@ function handleAttack(targetCard) {
     if (state.player.attackedIds.includes(attacker.id)) {
         addLog(getFormattedText('log_card_already_attacked', { rank: attacker.rank }));
         return;
+    }
+
+    // Handle special abilities
+    if (attacker.specialAbility === 'cointoss') {
+        state.coinTossAttacker = attacker;
+        state.coinTossTarget = targetCard;
+        document.getElementById('status-text').textContent = '運命のコイントス！';
+        hideAttackMenu();
+        render(); // Re-render to show cointoss UI
+        return; // Divert from normal attack flow
     }
     
     const totalA = attacker.value;
