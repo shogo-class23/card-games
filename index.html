@@ -165,6 +165,11 @@
 
 <div id="collection-screen" class="screen">
     <h2 data-lang-key="collection">COLLECTION</h2>
+    <div style="margin-bottom: 15px; display:flex; gap: 10px; align-items:center;">
+        <input type="text" id="name-search-input" placeholder="名称で検索..." style="padding: 8px; font-size: 1em; width: 200px;">
+        <input type="text" id="power-search-input" placeholder="パワー名で検索..." style="padding: 8px; font-size: 1em; width: 200px;">
+        <button class="game-button" onclick="filterCollection()">検索</button>
+    </div>
     <button class="game-button" onclick="addMonsterCardsToCollection()">さらにモンスターカードを生成</button>
     <div id="coll-grid" class="grid-container" style="grid-template-columns: repeat(7, 1fr);"></div>
     <div class="menu-btn" data-lang-key="back_to_title" onclick="showScreen('title-screen')">BACK</div>
@@ -636,8 +641,14 @@ class Card {
         } else { // Existing logic for regular cards
             this.value = RANK_VALUES[rank] || 0;
             this.isDoubleType = true;
-            const primaryPowers = ["ファイヤー", "ウォーター", "ウィンド", "ランド"];
-            this.powerName = getRandomElement(primaryPowers);
+            // Assign powerName based on suit
+            switch (this.suit) {
+                case 'fire': this.powerName = 'ファイヤー'; break;
+                case 'water': this.powerName = 'ウォーター'; break;
+                case 'wind': this.powerName = 'ウィンド'; break;
+                case 'earth': this.powerName = 'ランド'; break;
+                default: this.powerName = ''; // Fallback for unknown suits
+            }
             this.secondaryPowerName = "プレイ";
             this.requiredPower = this.isSupport ? 0 : ((this.value <= 3) ? 1 : (this.value <= 6) ? 2 : (this.value <= 10) ? 3 : 4);
         }
@@ -762,36 +773,64 @@ function saveDeck() {
 
 // --- 聖域：元のロジックをすべて保持 ---
 
+let fullCollection = [];
+
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     updateUIText(); // Update text every time a screen is shown
-    if (id === 'collection-screen') renderCollection();
+    if (id === 'collection-screen') initializeAndRenderCollection();
 }
 
-function renderCollection() {
+function initializeAndRenderCollection() {
+    if (fullCollection.length === 0) {
+        // Display regular cards first
+        SUITS.forEach(s => {
+            RANKS.forEach(r => fullCollection.push(new Card(s, r)));
+            SUPPORTS.forEach(a => fullCollection.push(new Card(s, a, 'support')));
+        });
+        // Add initial monster cards
+        for (let i = 0; i < 20; i++) {
+            fullCollection.push(generateRandomMonsterCard());
+        }
+    }
+    renderCardGrid(fullCollection);
+}
+
+function renderCardGrid(cards) {
     const grid = document.getElementById('coll-grid');
     grid.innerHTML = ''; // Clear previous content
+    cards.forEach(card => grid.appendChild(createCardEl(card)));
+}
 
-    // Display regular cards first
-    SUITS.forEach(s => {
-        RANKS.forEach(r => grid.appendChild(createCardEl(new Card(s, r))));
-        SUPPORTS.forEach(a => grid.appendChild(createCardEl(new Card(s, a, 'support'))));
+function filterCollection() {
+    const nameTerm = document.getElementById('name-search-input').value.toLowerCase();
+    const powerTerm = document.getElementById('power-search-input').value.toLowerCase();
+
+    const filteredCards = fullCollection.filter(card => {
+        const nameMatch = !nameTerm || 
+               (card.rank && card.rank.toLowerCase().includes(nameTerm)) ||
+               (card.displayName && card.displayName.toLowerCase().includes(nameTerm)) ||
+               (card.sizeName && card.sizeName.toLowerCase().includes(nameTerm)) ||
+               (card.raceName && card.raceName.toLowerCase().includes(nameTerm));
+
+        const powerMatch = !powerTerm ||
+               (card.powerName && card.powerName.toLowerCase().includes(powerTerm)) ||
+               (card.secondaryPowerName && card.secondaryPowerName.toLowerCase().includes(powerTerm));
+
+        return nameMatch && powerMatch;
     });
 
-    // Automatically add initial monster cards
-    addMonsterCardsToCollection(true); // Pass true to indicate initial load
+    renderCardGrid(filteredCards);
 }
 
 // モンスターカードをコレクションに追加する関数
-function addMonsterCardsToCollection(isInitialLoad = false) {
-    const grid = document.getElementById('coll-grid');
-    const numCardsToAdd = isInitialLoad ? 10 : 5; // Add 10 initially, 5 for subsequent clicks
-
+function addMonsterCardsToCollection() {
+    const numCardsToAdd = 5; // Add 5 for subsequent clicks
     for (let i = 0; i < numCardsToAdd; i++) { // Generate random monster cards
-        const monsterCard = generateRandomMonsterCard();
-        grid.appendChild(createCardEl(monsterCard));
+        fullCollection.push(generateRandomMonsterCard());
     }
+    filterCollection(); // Re-render the grid respecting the current filter
 }
 
 
