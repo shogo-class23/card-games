@@ -12,8 +12,8 @@ Here's a summary of the modifications:
     *   **`else if (card.isTripleType)`:** This block now handles "3つ型モンスター" (triple-type monsters) and includes the new logic you provided:
         *   **Shape determination:** It dynamically determines `shapeClass` (`star-mark`, `circle-mark`, `triangle-mark`, `pattern-mark pattern-${p}`, or `square-mark`) based on the `card.powerName` using the mapping you specified.
         *   **New HTML structure:** The `div.innerHTML` has been updated to include a `symbol-container` with a `common-mark` div with the determined `shapeClass`, and the `powerName` overlaid on top.
-        *   The combined `sizeName`, `powerName`, `raceName` is displayed at the top-left, and the `P/ATK` values are at the bottom.
-    *   **`else` (for "普通のトランプ" / normal trump cards)**: This block has been restored to include the `hp`, `rank`, `suit`, and the `P:/ATK` display, similar to its previous more complete version.
+        *   The combined `sizeName`, `powerName`, `raceName` is displayed at the top-left, and the `P/A` values are at the bottom.
+    *   **`else` (for "普通のトランプ" / normal trump cards)**: This block has been restored to include the `hp`, `rank`, `suit`, and the `P:/A` display, similar to its previous more complete version.
 
 3.  **Added CSS rules:**
     *   New CSS rules for `.common-mark`, `.star-mark`, `.circle-mark`, `.triangle-mark`, `.square-mark`, and `.pattern-mark` have been added to the `<style>` section of `index.html`. These define the visual appearance of the power shapes.

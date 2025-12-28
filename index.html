@@ -33,10 +33,10 @@
 
         .card-slot { width: var(--card-width); height: var(--card-height); background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: center; align-items: center; position: relative; border: 1px dashed rgba(255,255,255,0.2); }
         .card { width: var(--card-width); height: var(--card-height); border-radius: 8px; color: #333; cursor: pointer; position: relative; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; padding: 5px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); font-size: 0.7em; }
-        .card.fire { background-color: var(--fire-color); }
-        .card.water { background-color: var(--water-color); }
-        .card.wind { background-color: var(--wind-color); }
-        .card.earth { background-color: var(--earth-color); }
+        .card.fire { background-color: #FFFFFF; }
+        .card.water { background-color: #FFFFFF; }
+        .card.wind { background-color: #FFFFFF; }
+        .card.earth { background-color: #FFFFFF; }
         /* Thematic Colors for Cards */
         .color-light { background-color: #FFFF00; } /* Yellow */
         .color-dark { background-color: #333333; } /* Black */
@@ -349,7 +349,7 @@ const languageData = {
         'log_attack_start': 'Attack by [${rank}] begins!',
         'log_attack_fail_no_power': '...Attack failed due to insufficient power.',
         'log_card_already_attacked': '[${rank}] is already tired (has attacked).',
-        'log_attack_damage': 'Dealt ${totalAtk} damage to opponent\'s [${targetRank}]!',
+        'log_attack_damage': 'Dealt ${totalA} damage to opponent\'s [${targetRank}]!',
         'log_target_destroyed': 'Shattered [${rank}] with tremendous sound magic!',
         'log_opponent_cards_flipped': 'Opponent\'s cards are revealed!',
         'log_placement_complete_player_turn': 'Placement complete. Your turn begins.',
@@ -367,9 +367,9 @@ const languageData = {
         'log_opponent_deck_empty': 'Opponent\'s deck is empty!',
         'log_opponent_placed_card': 'Opponent placed [${rank}].',
         'log_opponent_did_not_place': 'Opponent did not place a card..',
-        'log_opponent_injected_power': 'Opponent injected power into [${rank}]! (Current: ${p_atk}/${p_req})',
+        'log_opponent_injected_power': 'Opponent injected power into [${rank}]! (Current: ${p_a}/${p_req})',
         'log_opponent_did_not_inject': 'Opponent did not inject power into a card..',
-        'log_opponent_attack': 'Opponent\'s [${oppCardRank}] attacks your [${targetCardRank}] for ${totalOppAtk} damage!',
+        'log_opponent_attack': 'Opponent\'s [${oppCardRank}] attacks your [${targetCardRank}] for ${totalOppA} damage!',
         'log_player_card_destroyed': 'Your [${rank}] has been defeated!',
         'log_opponent_no_target': 'Opponent\'s [${rank}] had no target to attack!',
         'log_opponent_attack_fail_no_power': 'Opponent\'s [${rank}] could not attack due to insufficient power..',
@@ -436,7 +436,7 @@ const languageData = {
         'log_attack_start': '【${rank}】の攻撃を開始！',
         'log_attack_fail_no_power': '……パワー不足で攻撃が不発に終わった。。',
         'log_card_already_attacked': '【${rank}】はもうお疲れだ。（攻撃済み）。',
-        'log_attack_damage': '相手の【${targetRank}】に ${totalAtk} ダメージ与えた。！',
+        'log_attack_damage': '相手の【${targetRank}】に ${totalA} ダメージ与えた。！',
         'log_target_destroyed': '★凄まじい音魔法で【${rank}】を粉砕した。！',
         'log_opponent_cards_flipped': '相手のカードがオープンされる！',
         'log_placement_complete_player_turn': '配置完了。あなたのターンを開始します。',
@@ -454,9 +454,9 @@ const languageData = {
         'log_opponent_deck_empty': '相手の山札はもうない！',
         'log_opponent_placed_card': '相手は【${rank}】を配置した。！',
         'log_opponent_did_not_place': '相手はカードを配置しなかった。。',
-        'log_opponent_injected_power': '相手は【${rank}】にパワーを注入した。！ (現在: ${p_atk}/${p_req})',
+        'log_opponent_injected_power': '相手は【${rank}】にパワーを注入した。！ (現在: ${p_a}/${p_req})',
         'log_opponent_did_not_inject': '相手はカードにパワーを注入しなかった。。',
-        'log_opponent_attack': '相手の【${oppCardRank}】があなたの【${targetCardRank}】に ${totalOppAtk} ダメージ与えた。！',
+        'log_opponent_attack': '相手の【${oppCardRank}】があなたの【${targetCardRank}】に ${totalOppA} ダメージ与えた。！',
         'log_player_card_destroyed': 'あなたの【${rank}】は撃破された。！',
         'log_opponent_no_target': '相手の【${rank}】は攻撃対象がいなかった。！',
         'log_opponent_attack_fail_no_power': '相手の【${rank}】はパワーが足りないので攻撃できなかった。。',
@@ -824,6 +824,15 @@ function createCardEl(card) {
         else if (triangles.includes(p)) shapeClass = "triangle-mark";
         else if (patterns.includes(p)) shapeClass = `pattern-mark pattern-${p}`;
 
+        let displayPowerName = card.powerName;
+        if (shapeClass === "star-mark") {
+            displayPowerName = "スター";
+        } else if (shapeClass === "circle-mark") {
+            displayPowerName = "エモーション";
+        } else if (shapeClass === "triangle-mark") {
+            displayPowerName = "マイナス";
+        }
+
         // --- 2. カードの見た目を作るぴょん！ ---
         div.innerHTML = `
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
@@ -832,15 +841,15 @@ function createCardEl(card) {
                 ${card.sizeName}${card.powerName}${card.raceName}
             </div>
 
-            <div class="symbol-container" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:40px; height:40px;">
+            <div class="symbol-container" style="position:absolute; top:50%; left:5px; transform:translateY(-50%); width:30px; height:30px;">
                 <div class="common-mark ${shapeClass}"></div>
-                <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.6em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
-                    ${card.powerName}
+                <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
+                    ${displayPowerName}
                 </div>
             </div>
 
             <div style="position:absolute; bottom:3px; width:100%; text-align:center; font-size:0.5em; font-weight:bold; color:#333;">
-                P:${card.attachedPower}/${card.requiredPower} ATK:${card.value}
+                P:${card.attachedPower}/${card.requiredPower} A:${card.value}
             </div>
         `;
     } else {
@@ -1174,12 +1183,12 @@ function handleAttack(targetCard) {
         return;
     }
     
-    const totalAtk = attacker.value;
-    targetCard.hp -= totalAtk;
+    const totalA = attacker.value;
+    targetCard.hp -= totalA;
     state.player.attackedIds.push(attacker.id);
     
     // ダメージのログ（ここが大事！）
-    addLog(getFormattedText('log_attack_damage', { targetRank: targetCard.rank, totalAtk: totalAtk }));
+    addLog(getFormattedText('log_attack_damage', { targetRank: targetCard.rank, totalA: totalA }));
 
     if (targetCard.hp <= 0) {
         const idx = state.opponent.field.indexOf(targetCard);
@@ -1324,7 +1333,7 @@ function opponentAI() {
     if (cardToPowerUp) {
         cardToPowerUp.attachedPower++;
         state.opponent.power--;
-        addLog(getFormattedText('log_opponent_injected_power', { rank: cardToPowerUp.rank, p_atk: cardToPowerUp.attachedPower, p_req: cardToPowerUp.requiredPower }));
+        addLog(getFormattedText('log_opponent_injected_power', { rank: cardToPowerUp.rank, p_a: cardToPowerUp.attachedPower, p_req: cardToPowerUp.requiredPower }));
     } else if (cardsOnOpponentField.length > 0) {
         addLog(getText('log_opponent_did_not_inject'));
     }
@@ -1341,14 +1350,14 @@ function opponentAI() {
             }
 
             if (oppCard.attachedPower >= oppCard.requiredPower) { // Check power requirement
-                const totalOppAtk = oppCard.value; // Now only uses card's value for attack
+                const totalOppA = oppCard.value; // Now only uses card's value for attack
                 const playerFrontRowCards = [state.player.field[0], state.player.field[1], state.player.field[2]].filter(p => p !== null);
 
                 if (playerFrontRowCards.length > 0) {
                     // Attack player's first available front row card
                     const targetCard = playerFrontRowCards[0];
-                    targetCard.hp -= totalOppAtk;
-                    addLog(getFormattedText('log_opponent_attack', { oppCardRank: oppCard.rank, targetCardRank: targetCard.rank, totalOppAtk: totalOppAtk }));
+                    targetCard.hp -= totalOppA;
+                    addLog(getFormattedText('log_opponent_attack', { oppCardRank: oppCard.rank, targetCardRank: targetCard.rank, totalOppA: totalOppA }));
                     opponentAttackedIds.push(oppCard.id); // 攻撃済みとして登録
                     if (targetCard.hp <= 0) {
                         const idx = state.player.field.indexOf(targetCard);
