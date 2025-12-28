@@ -246,6 +246,36 @@ function generateHuntingName() {
     return `${size}${power}${specie}`;
 }
 
+function extractMonsterParts(monsterName) {
+    let sizeName = null;
+    let powerName = null;
+    let raceName = null;
+    let remainingName = monsterName;
+
+    // Extract sizeName (longest prefix match)
+    for (const size of sortedSizes) {
+        if (remainingName.startsWith(size)) {
+            sizeName = size;
+            remainingName = remainingName.substring(size.length);
+            break;
+        }
+    }
+
+    // Extract raceName (longest suffix match from remainingName)
+    for (const specie of sortedSpecies) {
+        if (remainingName.endsWith(specie)) {
+            raceName = specie;
+            remainingName = remainingName.substring(0, remainingName.length - specie.length);
+            break;
+        }
+    }
+
+    // What's left is the powerName
+    powerName = remainingName || null;
+
+    return { sizeName, powerName, raceName };
+}
+
 function generateTrumpName() {
     return getRandomElement(trumpNames);
 }
@@ -565,7 +595,23 @@ class Card {
         this.displayName = monsterName || rank; // Use monsterName if provided, otherwise use rank
         this.isSupport = (type === 'support' || SUPPORTS.includes(rank)); // Determine isSupport first
 
+        this.sizeName = null; // New property
+        this.powerName = null; // New property
+        this.raceName = null; // New property
+
         if (monsterName) { // Logic for monster cards
+            const parts = extractMonsterParts(monsterName);
+            this.sizeName = parts.sizeName;
+            this.powerName = parts.powerName;
+            this.raceName = parts.raceName;
+
+            // This part for displayName might need adjustment if it conflicts with isTripleType logic
+            // But for now, we'll keep it as is, as the createCardEl will explicitly use sizeName/powerName/raceName
+            // for display.
+            if (this.sizeName && this.powerName && this.raceName) {
+                this.displayName = `${this.sizeName}\n${this.powerName}\n${this.raceName}`;
+            }
+
             this.value = Math.floor(Math.random() * 10) + 1; // Random value 1-10
             this.requiredPower = getRequiredPowerFromSize(monsterName); // Calculate based on size
         } else { // Existing logic for regular cards
@@ -733,31 +779,45 @@ function addLog(msg) {
 }
 
 function createCardEl(card) {
-    const thematicColorClass = getThematicColorClass(getThematicSuitLabel(card));
-    const div = document.createElement('div'); div.className = `card ${thematicColorClass}`;
-    div.dataset.cardId = card.id; // Add data-card-id for easier lookup
+    const div = document.createElement('div');
+    // 色は一旦今のまま（suitなど）を使うぴょん
+    div.className = `card ${card.suit}`;
+    div.dataset.cardId = card.id;
 
     if (card.isFaceDown) {
         div.className = 'card back';
         div.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 2em; color: white;">?</div>`;
-    } else {
-        // Create the inner HTML with placeholder for displayName
-        let innerHtml = `<div class="hp-badge">${card.hp}/${card.maxHp}</div>`;
-        innerHtml += `<div class="card-name-display" style="text-align: center;">${card.displayName}</div>`; // Use a class for easier targeting, and force center
-        innerHtml += `<div style="font-size:0.8em; text-align: center;">${getThematicSuitLabel(card)}</div>`; // Force center
-        innerHtml += `<div style="font-size:0.9em; text-align: center;">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>`; // Force center
-        if (card.isSupport) {
-            innerHtml = `<div class="hp-badge">SP</div><div class="card-name-display" style="text-align: center;">${card.displayName}</div><div style="font-size:0.8em; text-align: center;">${getThematicSuitLabel(card)}</div>`;
-        }
-        div.innerHTML = innerHtml;
+    } else if (card.isSupport) {
+        // 【サポートカード】左側にrankとsuit
+        div.innerHTML = `
+            <div class="hp-badge">SP</div>
+            <div style="font-size:0.75em; text-align:left; padding:3px; font-weight:bold;">${card.rank}</div>
+            <div style="font-size:0.6em; text-align:left; padding-left:3px;">${card.suit}</div>
+        `;
+    } else if (card.sizeName && card.powerName && card.raceName) {
+        // ★【3つ型モンスター】の新しい配置だぴょん！
+        div.innerHTML = `
+            <div class="hp-badge">${card.hp}/${card.maxHp}</div>
+            
+            <div style="font-size:0.45em; text-align:left; position:absolute; top:3px; left:3px; line-height:1.1; font-weight:bold; color:#333;">
+                ${card.sizeName}<br>${card.raceName}
+            </div>
 
-        // Adjust font size after the element is in the DOM (or at least has its content)
-        const nameDisplayElement = div.querySelector('.card-name-display');
-        if (nameDisplayElement) {
-            // Set an initial larger font size for dynamic adjustment
-            nameDisplayElement.style.fontSize = '1em'; // Start with a reasonable size
-            adjustFontSizeToFit(nameDisplayElement, 1, 0.6); // Max 1em, Min 0.6em (updated)
-        }
+            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:100%; text-align:center; font-size:0.7em; font-weight:bold; color:#333;">
+                ${card.powerName}
+            </div>
+
+            <div style="font-size:0.5em; position:absolute; bottom:3px; width:100%; text-align:center; font-weight:bold; color:#333;">
+                P:${card.attachedPower}/${card.requiredPower} ATK:${card.value}
+            </div>
+        `;
+    } else {
+        // 【普通のトランプ】今まで通りの表示
+        div.innerHTML = `
+            <div class="hp-badge">${card.hp}/${card.maxHp}</div>
+            <div style="font-size:1.2em; text-align:left; padding:3px; font-weight:bold;">${card.rank}</div>
+            <div style="font-size:0.8em; text-align:left; padding-left:3px;">${card.suit}</div>
+        `;
     }
     return div;
 }

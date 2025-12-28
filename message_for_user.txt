@@ -1,5 +1,19 @@
-カードの「スーツ」表示を、ご要望に応じて変更しました。
-- モンスターカードは、パワーの種類に基づいて「Star」、「Emotion」、または実際のパワー名を表示します。
-- トランプ系カードとサポートカードは、常に「Star」を表示します。
+I have applied the changes to `index.html` as you outlined.
 
-ブラウザで `index.html` を開き、コレクション画面などでカードの表示をご確認いただけますでしょうか。
+Here's a summary of the modifications:
+
+1.  **Re-added `extractMonsterParts` function:**
+    *   This helper function is now available again and is responsible for parsing the `monsterName` string to extract `sizeName`, `powerName`, and `raceName`.
+
+2.  **Updated `Card` constructor:**
+    *   The `Card` constructor now stores `sizeName`, `powerName`, and `raceName` as direct properties (`this.sizeName`, `this.powerName`, `this.raceName`) on the `Card` object, making them accessible for rendering.
+
+3.  **Revised `createCardEl` function:**
+    *   The card rendering logic has been completely updated to follow the new structure you provided:
+        *   The `div`'s class name is now set to `card ${card.suit}`.
+        *   **`if (card.isFaceDown)`:** Remains the same for face-down cards.
+        *   **`else if (card.isSupport)`:** Now handles all support cards, displaying their `rank` and `suit` in a left-aligned, bold format.
+        *   **`else if (card.sizeName && card.powerName && card.raceName)`:** This block now handles "3つ型モンスター" (triple-type monsters), displaying their `hp`, `sizeName`, `raceName`, `powerName`, `attachedPower`, `requiredPower`, and `value` with the specified styling.
+        *   **`else` (for "普通のトランプ" / normal trump cards)**: This block provides a default layout for all other cards, displaying `hp`, `rank`, and `suit` with left alignment as requested.
+
+These changes should correctly implement the new rendering styles for your cards.
