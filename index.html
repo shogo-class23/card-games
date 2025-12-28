@@ -635,6 +635,10 @@ class Card {
             this.requiredPower = getRequiredPowerFromSize(monsterName); // Calculate based on size
         } else { // Existing logic for regular cards
             this.value = RANK_VALUES[rank] || 0;
+            this.isDoubleType = true;
+            const primaryPowers = ["ファイヤー", "ウォーター", "ウィンド", "ランド"];
+            this.powerName = getRandomElement(primaryPowers);
+            this.secondaryPowerName = "プレイ";
             this.requiredPower = this.isSupport ? 0 : ((this.value <= 3) ? 1 : (this.value <= 6) ? 2 : (this.value <= 10) ? 3 : 4);
         }
         
@@ -851,6 +855,56 @@ function createCardEl(card) {
             <div style="position:absolute; bottom:3px; width:100%; text-align:center; font-size:0.5em; font-weight:bold; color:#333;">
                 P:${card.attachedPower}/${card.requiredPower} A:${card.value}
             </div>
+        `;
+    } else if (card.isDoubleType) {
+        // --- Setup for Power 1 ---
+        const p1 = card.powerName;
+        let shapeClass1 = "square-mark";
+        const stars = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ"];
+        const circles = ["アングリー", "ジョイ", "ソロー", "プレシャー", "ラブ", "ヘイト", "フィアー", "サプライズ", "ウォント", "アバンダンド"];
+        const triangles = ["ポイズン", "ダーティ", "ブラッド", "パラリシス", "イルネス", "アシッド", "タイヤード"];
+
+        if (stars.includes(p1)) shapeClass1 = "star-mark";
+        else if (circles.includes(p1)) shapeClass1 = "circle-mark";
+        else if (triangles.includes(p1)) shapeClass1 = "triangle-mark";
+
+        let displayPowerName1 = p1;
+        if (shapeClass1 === "star-mark") displayPowerName1 = "スター";
+        else if (shapeClass1 === "circle-mark") displayPowerName1 = "エモーション";
+        else if (shapeClass1 === "triangle-mark") displayPowerName1 = "マイナス";
+
+        // --- Setup for Power 2 ---
+        const p2 = card.secondaryPowerName;
+        let shapeClass2 = "square-mark";
+        if (stars.includes(p2)) shapeClass2 = "star-mark";
+        else if (circles.includes(p2)) shapeClass2 = "circle-mark";
+        else if (triangles.includes(p2)) shapeClass2 = "triangle-mark";
+        
+        let displayPowerName2 = p2;
+        if (shapeClass2 === "star-mark") displayPowerName2 = "スター";
+        else if (shapeClass2 === "circle-mark") displayPowerName2 = "エモーション";
+        else if (shapeClass2 === "triangle-mark") displayPowerName2 = "マイナス";
+
+        div.innerHTML = `
+            <div class="hp-badge">${card.hp}/${card.maxHp}</div>
+            <div style="font-size:1.2em; text-align:left; padding:3px; font-weight:bold;">${card.rank}</div>
+            
+            <div style="position:absolute; top:50%; left:5px; transform:translateY(-50%); display:flex; gap: 2px;">
+                <div class="symbol-container" style="position:relative; width:30px; height:30px;">
+                    <div class="common-mark ${shapeClass1}"></div>
+                    <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
+                        ${displayPowerName1}
+                    </div>
+                </div>
+                <div class="symbol-container" style="position:relative; width:30px; height:30px;">
+                    <div class="common-mark ${shapeClass2}"></div>
+                    <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
+                        ${displayPowerName2}
+                    </div>
+                </div>
+            </div>
+
+            <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>
         `;
     } else {
         // 【普通のトランプ】今まで通りの表示
