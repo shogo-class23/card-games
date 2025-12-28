@@ -807,10 +807,9 @@ function createCardEl(card) {
                 ${card.powerName}
             </div>
 
-            <div style="position:absolute; bottom:3px; width:100%; text-align:center; font-weight:bold; color:#333;">
-                P:${card.attachedPower}/${card.requiredPower} ATK:${card.value}
-            </div>
-        `;
+                    <div style="font-size:0.45em; position:absolute; bottom:3px; width:100%; text-align:center; font-weight:bold; color:#333;">
+                        P:${card.attachedPower}/${card.requiredPower} A:${card.value}
+                    </div>        `;
     } else {
         // 【普通のトランプ】今まで通りの表示
         div.innerHTML = `

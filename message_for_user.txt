@@ -13,10 +13,10 @@ Here's a summary of the modifications:
         *   The `div`'s class name is now set to `card ${card.suit}`.
         *   **`if (card.isFaceDown)`:** Remains the same for face-down cards.
         *   **`else if (card.isSupport)`:** Now handles all support cards, displaying their `rank` and `suit` in a left-aligned, bold format.
-        *   **`else if (card.sizeName && card.powerName && card.raceName)`:** This block now handles "3つ型モンスター" (triple-type monsters). **The display of the name has been updated as per your latest request**:
+        *   **`else if (card.sizeName && card.powerName && card.raceName)`:** This block now handles "3つ型モンスター" (triple-type monsters).
             *   A combined `sizeName`, `powerName`, and `raceName` is displayed at the top-left (`top:2px`, `left:2px`) with `word-break:break-all`.
             *   A separate `powerName` is displayed in the center (`top:50%`).
-            *   The `P/ATK` display is at the bottom (`bottom:3px`) with `font-size:0.5em`.
+            *   The `P/ATK` display at the bottom (`bottom:3px`) has been modified: its **font size is now `0.45em`** and **"ATK" has been changed to "A"**.
         *   **`else` (for "普通のトランプ" / normal trump cards)**: This block provides a default layout for all other cards, displaying `hp`, `rank`, `suit`, and power/ATK with left alignment.
 
 These changes should correctly implement the new rendering styles for your cards.
