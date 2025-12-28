@@ -487,6 +487,9 @@ const languageData = {
         'log_special_not_implemented': '特別技はまだ実装されていない。！',
         'log_player_first': 'あなたが先行です。',
         'log_opponent_first': '相手が先行です。',
+        'log_abnormal_state_applied': '【${rank}】が異常状態になった。！',
+        'log_abnormal_state_damage': '【${rank}】が異常状態により1ダメージを受けた！ (現在HP: ${hp})',
+        'log_abnormal_state_destroyed': '【${rank}】は異常状態により破壊された！',
     }
 };
 
@@ -606,6 +609,59 @@ function getThematicSuitLabel(card) {
         }
         return "星"; // Default for standard trump cards
     }
+}
+
+function getInitial(powerName) {
+    if (!powerName) return '';
+    const specialInitials = {
+        "マウンテン": "Mt",
+        "イルネス": "I",
+        "アシッド": "A",
+        "パラリシス": "P",
+        "クリスタル": "C",
+        "ダーティ": "D",
+        "ブラッド": "B",
+        "チエ": "Ch",
+        "プラント": "Pl",
+        "ライト": "L",
+        "ダーク": "Dk",
+        "ファイヤー": "F",
+        "ウォーター": "W",
+        "ランド": "Ld",
+        "ウィンド": "Wd",
+        "メタル": "M",
+        "マジック": "Mg",
+        "メロディー": "Me",
+        "ネザー": "N",
+        "アバンダンド": "Ab",
+        "ポイズン": "Po",
+        "アイス": "Ic",
+        "タイヤード": "Ty",
+        "ヒール": "H",
+        "チャーム": "Cm",
+        "イミテイト": "Im",
+        "チェンジ": "Cg",
+        "プレイ": "Pl",
+        "グループ": "Gr",
+        "スリープ": "Sl",
+        "イレイス": "Er",
+        "エンバイロンメント": "En",
+        "フェイク": "Fk",
+        "オール": "Al",
+        "アングリー": "An",
+        "ジョイ": "J",
+        "ソロー": "S",
+        "プレシャー": "Pr",
+        "ラブ": "Lv",
+        "ヘイト": "Ht",
+        "フィアー": "F",
+        "サプライズ": "Sp",
+        "ウォント": "Wn",
+        "チェック": "Ck",
+        "ドット": "Dt",
+        "ワールプール": "Wr",
+    };
+    return specialInitials[powerName] || powerName.charAt(0);
 }
 
 // ヘルパー関数: モンスター名から必要パワーを計算
@@ -798,6 +854,28 @@ function enterEditor() {
             specialAbility: 'cointoss' 
         });
         editorCardPool.push(karikoin);
+
+        // Add special card 'Kariijou'
+        const kariijou = new Card('special', 'カリイジョウ', 'unit', 'カリイジョウ', {
+            hp: 5,
+            maxHp: 5,
+            value: 5,
+            requiredPower: 2,
+            powerName: 'アシッド', // Minus Power
+            specialAbility: 'abnormal_state'
+        });
+        editorCardPool.push(kariijou);
+
+        // Add special card 'Kariijou'
+        const kariijou = new Card('special', 'カリイジョウ', 'unit', 'カリイジョウ', {
+            hp: 5,
+            maxHp: 5,
+            value: 5,
+            requiredPower: 2,
+            powerName: 'アシッド', // Minus Power
+            specialAbility: 'abnormal_state'
+        });
+        editorCardPool.push(kariijou);
     }
     
     document.getElementById('editor-name-search-input').value = '';
@@ -914,6 +992,28 @@ function initializeAndRenderCollection() {
             specialAbility: 'cointoss' 
         });
         fullCollection.push(karikoin);
+
+        // Add special card 'Kariijou' to fullCollection
+        const kariijou = new Card('special', 'カリイジョウ', 'unit', 'カリイジョウ', {
+            hp: 5,
+            maxHp: 5,
+            value: 5,
+            requiredPower: 2,
+            powerName: 'アシッド', // Minus Power
+            specialAbility: 'abnormal_state'
+        });
+        fullCollection.push(kariijou);
+
+        // Add special card 'Kariijou' to fullCollection
+        const kariijou = new Card('special', 'カリイジョウ', 'unit', 'カリイジョウ', {
+            hp: 5,
+            maxHp: 5,
+            value: 5,
+            requiredPower: 2,
+            powerName: 'アシッド', // Minus Power
+            specialAbility: 'abnormal_state'
+        });
+        fullCollection.push(kariijou);
     }
     renderCardGrid(fullCollection);
 }
@@ -979,8 +1079,8 @@ function createCardEl(card) {
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
             <div style="font-size:0.42em; text-align:center; padding:3px; font-weight:bold; line-height:1.1; word-break:break-all;">${card.rank}</div>
                 <div class="common-mark ${shapeClass}"></div>
-                <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
-                    スター
+                <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.7em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
+                    ${getInitial(card.powerName)}
                 </div>
             </div>
 
@@ -1007,14 +1107,7 @@ function createCardEl(card) {
         else if (triangles.includes(p)) shapeClass = "triangle-mark";
         else if (patterns.includes(p)) shapeClass = `pattern-mark pattern-${p}`;
 
-        let displayPowerName = card.powerName;
-        if (shapeClass === "star-mark") {
-            displayPowerName = "スター";
-        } else if (shapeClass === "circle-mark") {
-            displayPowerName = "エモーション";
-        } else if (shapeClass === "triangle-mark") {
-            displayPowerName = "マイナス";
-        }
+        let displayPowerName = getInitial(card.powerName);
 
         // --- 2. カードの見た目を作るぴょん！ ---
         div.innerHTML = `
@@ -1047,11 +1140,8 @@ function createCardEl(card) {
         else if (circles.includes(p1)) shapeClass1 = "circle-mark";
         else if (triangles.includes(p1)) shapeClass1 = "triangle-mark";
 
-        let displayPowerName1 = p1;
-        if (shapeClass1 === "star-mark") displayPowerName1 = "スター";
-        else if (shapeClass1 === "circle-mark") displayPowerName1 = "エモーション";
-        else if (shapeClass1 === "triangle-mark") displayPowerName1 = "マイナス";
-
+        let displayPowerName1 = getInitial(p1);
+        
         // --- Setup for Power 2 ---
         const p2 = card.secondaryPowerName;
         let shapeClass2 = "square-mark";
@@ -1059,10 +1149,7 @@ function createCardEl(card) {
         else if (circles.includes(p2)) shapeClass2 = "circle-mark";
         else if (triangles.includes(p2)) shapeClass2 = "triangle-mark";
         
-        let displayPowerName2 = p2;
-        if (shapeClass2 === "star-mark") displayPowerName2 = "スター";
-        else if (shapeClass2 === "circle-mark") displayPowerName2 = "エモーション";
-        else if (shapeClass2 === "triangle-mark") displayPowerName2 = "マイナス";
+        let displayPowerName2 = getInitial(p2);
 
         div.innerHTML = `
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
@@ -1086,13 +1173,11 @@ function createCardEl(card) {
             <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>
         `;
     } else {
-        // 【普通のトランプ】今まで通りの表示
-        div.innerHTML = `
-            <div class="hp-badge">${card.hp}/${card.maxHp}</div>
-            <div style="font-size:1.2em; text-align:left; padding:3px; font-weight:bold;">${card.rank}</div>
-            <div style="font-size:0.8em; text-align:left; padding-left:3px;">${card.suit}</div>
-            <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>
-        `;
+        // 【普通のトランプ】これらのカードは表示しない
+        div.innerHTML = `<div style="color:red; font-size:0.8em;">非表示カード</div>`;
+        div.style.backgroundColor = 'transparent';
+        div.style.border = 'none';
+        return div; // 早めにリターンして、これ以上の処理を行わない
     }
     return div;
 }
@@ -1421,13 +1506,9 @@ function handleAttack(targetCard) {
     }
 
     // Handle special abilities
-    if (attacker.specialAbility === 'cointoss') {
-        state.coinTossAttacker = attacker;
-        state.coinTossTarget = targetCard;
-        document.getElementById('status-text').textContent = '運命のコイントス！';
-        hideAttackMenu();
-        render(); // Re-render to show cointoss UI
-        return; // Divert from normal attack flow
+    if (attacker.specialAbility === 'abnormal_state') {
+        targetCard.abnormalState = true;
+        addLog(getFormattedText('log_abnormal_state_applied', { rank: targetCard.rank }));
     }
     
     const totalA = attacker.value;
@@ -1492,7 +1573,8 @@ function handleEndTurn() {
     addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
     state.turn = 'opponent'; document.getElementById('status-text').textContent = "相手ターン";
     rotateFields();
-    render(); 
+    performAbnormalStateCheck(state.opponent.field, false); // 相手フィールドの異常状態をチェック
+    render(); // 状態チェックの結果を反映するために再描画
     setTimeout(opponentAI, 1000);
 }
 
@@ -1630,6 +1712,8 @@ function opponentAI() {
     
     addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
     rotateFields();
+    performAbnormalStateCheck(state.player.field, true); // プレイヤーフィールドの異常状態をチェック
+    render(); // 状態チェックの結果を反映するために再描画
 
     // Player draws a card
     if (state.player.deck.length > 0) {
@@ -1729,6 +1813,30 @@ function checkWin() {
     }
 
     return false;
+}
+
+// 新しいヘルパー関数: 異常状態チェックとダメージ処理
+function performAbnormalStateCheck(field, isPlayerField) {
+    let cardsDestroyed = false;
+    const targetState = isPlayerField ? state.player : state.opponent;
+    const opponentState = isPlayerField ? state.opponent : state.player;
+
+    for (let i = 0; i < field.length; i++) {
+        const card = field[i];
+        if (card && card.abnormalState) {
+            card.hp--;
+            addLog(getFormattedText('log_abnormal_state_damage', { rank: card.rank, hp: card.hp }));
+
+            if (card.hp <= 0) {
+                field[i] = null; // フィールドから除去
+                targetState.grave++; // 墓地に送る
+                opponentState.points++; // 相手にポイントを与える
+                addLog(getFormattedText('log_abnormal_state_destroyed', { rank: card.rank }));
+                cardsDestroyed = true;
+            }
+        }
+    }
+    return cardsDestroyed; // カードが破壊されたかどうかのフラグを返す
 }
 
 function startGameWithDeck(deckId) {
