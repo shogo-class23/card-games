@@ -1579,24 +1579,42 @@ function showGameOverScreen(result) {
 }
 
 function checkWin() {
-    if (state.gameOver || state.canPlaceCard) return false; // ゲーム中のみ判定
+    if (state.gameOver || state.canPlaceCard) return false;
 
-    // ポイントでの決着 (5点先取)
-    const playerWinsByPoints = state.player.points >= 5;
-    const opponentWinsByPoints = state.opponent.points >= 5;
+    const playerHasCards = state.player.field.some(c => c !== null);
+    const opponentHasCards = state.opponent.field.some(c => c !== null);
 
-    if (playerWinsByPoints && opponentWinsByPoints) { // 両者5点に到達した場合は引き分け
+    // 1. Field Annihilation Check (takes precedence)
+    if (!playerHasCards && !opponentHasCards) {
         showGameOverScreen('draw');
         return true;
     }
-    if (playerWinsByPoints) { // プレイヤーが5点に到達
+    if (!opponentHasCards) {
         showGameOverScreen('win');
         return true;
     }
-    if (opponentWinsByPoints) { // 相手が5点に到達
+    if (!playerHasCards) {
         showGameOverScreen('lose');
         return true;
     }
+
+    // 2. Point Victory Check (if no one has been annihilated)
+    const playerWinsByPoints = state.player.points >= 5;
+    const opponentWinsByPoints = state.opponent.points >= 5;
+
+    if (playerWinsByPoints && opponentWinsByPoints) {
+        showGameOverScreen('draw');
+        return true;
+    }
+    if (playerWinsByPoints) {
+        showGameOverScreen('win');
+        return true;
+    }
+    if (opponentWinsByPoints) {
+        showGameOverScreen('lose');
+        return true;
+    }
+
     return false;
 }
 
