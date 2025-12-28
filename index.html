@@ -137,6 +137,11 @@
     <div class="editor-layout">
         <div style="flex:1; display:flex; flex-direction:column;">
             <h3 data-lang-key="card_pool">CARD POOL</h3>
+            <div style="margin-bottom: 10px; display:flex; gap: 5px; align-items:center;">
+                <input type="text" id="editor-name-search-input" placeholder="名称..." style="padding: 6px; font-size: 0.9em; width: 120px;">
+                <input type="text" id="editor-power-search-input" placeholder="パワー名..." style="padding: 6px; font-size: 0.9em; width: 120px;">
+                <button class="game-button" style="padding: 6px 10px;" onclick="filterEditorPool()">検索</button>
+            </div>
             <div id="pool-grid" class="scroll-grid"></div>
         </div>
         <div style="flex:1; display:flex; flex-direction:column;">
@@ -614,6 +619,7 @@ class Card {
         this.suit = suit;
         this.rank = rank;
         this.type = type;
+        this.monsterName = monsterName; // Preserve original monster name
         this.displayName = monsterName || rank; // Use monsterName if provided, otherwise use rank
         this.isSupport = (type === 'support' || SUPPORTS.includes(rank)); // Determine isSupport first
 
@@ -621,6 +627,7 @@ class Card {
         this.sizeName = null; // New property
         this.powerName = null; // New property
         this.raceName = null; // New property
+        this.isDoubleType = false;
 
         if (monsterName) { // Logic for monster cards
             const parts = extractMonsterParts(monsterName);
@@ -704,26 +711,38 @@ function openDeckList(purpose = 'edit') {
 function enterEditor() {
     const saved = localStorage.getItem(`deck_cards_${state.editIdx}`);
     state.editCards = saved ? JSON.parse(saved).map(d => new Card(d.suit, d.rank, d.type, d.monsterName)) : [];
-    const pool = document.getElementById('pool-grid'); pool.innerHTML = '';
-    // Add standard cards
-    SUITS.forEach(s => {
-        RANKS.forEach(r => pool.appendChild(createCardUI(new Card(s, r), true)));
-        SUPPORTS.forEach(a => pool.appendChild(createCardUI(new Card(s, a, 'support'), true)));
-    });
 
-    // Add a selection of monster cards
-    const numMonsterCardsInPool = 20; // Number of unique monster cards to show in the pool
-    let generatedMonsterCards = new Set(); // Use a Set to ensure uniqueness
-    while (generatedMonsterCards.size < numMonsterCardsInPool) {
-        const monsterCard = generateRandomMonsterCard();
-        // Check for uniqueness based on monsterName (displayName)
-        if (![...generatedMonsterCards].some(c => c.displayName === monsterCard.displayName)) {
-            generatedMonsterCards.add(monsterCard);
-            pool.appendChild(createCardUI(monsterCard, true));
+    if (editorCardPool.length === 0) {
+        // Add standard cards
+        SUITS.forEach(s => {
+            RANKS.forEach(r => editorCardPool.push(new Card(s, r)));
+            SUPPORTS.forEach(a => editorCardPool.push(new Card(s, a, 'support')));
+        });
+
+        // Add a selection of monster cards
+        const numMonsterCardsInPool = 20;
+        let generatedMonsterNames = new Set();
+        while (editorCardPool.filter(c => c.monsterName).length < numMonsterCardsInPool) {
+            const monsterCard = generateRandomMonsterCard();
+            if (!generatedMonsterNames.has(monsterCard.displayName)) {
+                generatedMonsterNames.add(monsterCard.displayName);
+                editorCardPool.push(monsterCard);
+            }
         }
     }
+    
+    document.getElementById('editor-name-search-input').value = '';
+    document.getElementById('editor-power-search-input').value = '';
 
-    renderEditor(); showScreen('editor-screen');
+    renderEditorPool(editorCardPool);
+    renderEditor(); 
+    showScreen('editor-screen');
+}
+
+function renderEditorPool(cards) {
+    const pool = document.getElementById('pool-grid'); 
+    pool.innerHTML = '';
+    cards.forEach(c => pool.appendChild(createCardUI(c, true)));
 }
 
 function createCardUI(c, isPool) {
@@ -771,7 +790,29 @@ function saveDeck() {
     openDeckList('edit');
 }
 
-// --- 聖域：元のロジックをすべて保持 ---
+let editorCardPool = [];
+
+function filterEditorPool() {
+    const nameTerm = document.getElementById('editor-name-search-input').value.toLowerCase();
+    const powerTerm = document.getElementById('editor-power-search-input').value.toLowerCase();
+
+    const filteredCards = editorCardPool.filter(card => {
+        const nameMatch = !nameTerm || 
+               (card.rank && card.rank.toLowerCase().includes(nameTerm)) ||
+               (card.displayName && card.displayName.toLowerCase().includes(nameTerm)) ||
+               (card.sizeName && card.sizeName.toLowerCase().includes(nameTerm)) ||
+               (card.raceName && card.raceName.toLowerCase().includes(nameTerm));
+
+        const powerMatch = !powerTerm ||
+               (card.powerName && card.powerName.toLowerCase().includes(powerTerm)) ||
+               (card.secondaryPowerName && card.secondaryPowerName.toLowerCase().includes(powerTerm));
+
+        return nameMatch && powerMatch;
+    });
+
+    renderEditorPool(filteredCards);
+}
+
 
 let fullCollection = [];
 
