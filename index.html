@@ -838,6 +838,28 @@ function enterEditor() {
             specialAbility: 'copy'
         });
         editorCardPool.push(karikopi);
+
+        // --- New card: Kari-Heal ---
+        const kariheal = new Card('special', 'カリヒール', 'unit', 'カリヒール', {
+            hp: 8,
+            maxHp: 8,
+            value: 0, // Cannot attack
+            requiredPower: 2,
+            powerName: 'ヒール', // Heal power
+            specialAbility: 'kari_heal'
+        });
+        editorCardPool.push(kariheal);
+
+        // --- New card: Kari-Sleep ---
+        const karisleep = new Card('special', 'カリスリープ', 'unit', 'カリスリープ', {
+            hp: 5,
+            maxHp: 5,
+            value: 3, // Can attack, but for sleep effect
+            requiredPower: 3,
+            powerName: 'スリープ', // Sleep power
+            specialAbility: 'kari_sleep'
+        });
+        editorCardPool.push(karisleep);
     }
     
     document.getElementById('editor-name-search-input').value = '';
@@ -974,6 +996,28 @@ function initializeAndRenderCollection() {
             specialAbility: 'copy'
         });
         fullCollection.push(karikopi);
+
+        // --- New card: Kari-Heal ---
+        const kariheal = new Card('special', 'カリヒール', 'unit', 'カリヒール', {
+            hp: 8,
+            maxHp: 8,
+            value: 0, // Cannot attack
+            requiredPower: 2,
+            powerName: 'ヒール', // Heal power
+            specialAbility: 'kari_heal'
+        });
+        fullCollection.push(kariheal);
+
+        // --- New card: Kari-Sleep ---
+        const karisleep = new Card('special', 'カリスリープ', 'unit', 'カリスリープ', {
+            hp: 5,
+            maxHp: 5,
+            value: 3, // Can attack, but for sleep effect
+            requiredPower: 3,
+            powerName: 'スリープ', // Sleep power
+            specialAbility: 'kari_sleep'
+        });
+        fullCollection.push(karisleep);
     }
     renderCardGrid(fullCollection);
 }
@@ -1029,7 +1073,7 @@ function createCardEl(card) {
     if (card.isFaceDown) {
         div.className = 'card back';
         div.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 2em; color: white;">?</div>`;
-    } else if (card.specialAbility === 'cointoss' || card.specialAbility === 'copy' || card.specialAbility === 'abnormal_state') {
+    } else if (card.specialAbility === 'cointoss' || card.specialAbility === 'copy' || card.specialAbility === 'abnormal_state' || card.specialAbility === 'kari_heal' || card.specialAbility === 'kari_sleep') {
         const p = card.powerName;
         let shapeClass = "square-mark"; // Default
         let displayPowerName = getInitialism(p);
@@ -1039,10 +1083,8 @@ function createCardEl(card) {
 
         if (stars.includes(p)) {
             shapeClass = "star-mark";
-            displayPowerName = getInitialism("スター");
         } else if (triangles.includes(p)) {
             shapeClass = "triangle-mark";
-            displayPowerName = getInitialism("マイナス");
         }
 
         div.innerHTML = `
@@ -1079,11 +1121,11 @@ function createCardEl(card) {
 
         let displayPowerName = getInitialism(card.powerName);
         if (shapeClass === "star-mark") {
-            displayPowerName = getInitialism("スター");
+            // Keep specific initialism
         } else if (shapeClass === "circle-mark") {
-            displayPowerName = getInitialism("エモーション");
+            // Keep specific initialism
         } else if (shapeClass === "triangle-mark") {
-            displayPowerName = getInitialism("マイナス");
+            // Keep specific initialism
         }
 
         // --- 2. カードの見た目を作るぴょん！ ---
@@ -1118,9 +1160,9 @@ function createCardEl(card) {
         else if (triangles.includes(p1)) shapeClass1 = "triangle-mark";
 
         let displayPowerName1 = getInitialism(p1);
-        if (shapeClass1 === "star-mark") displayPowerName1 = getInitialism("スター");
-        else if (shapeClass1 === "circle-mark") displayPowerName1 = getInitialism("エモーション");
-        else if (shapeClass1 === "triangle-mark") displayPowerName1 = getInitialism("マイナス");
+        if (shapeClass1 === "star-mark") { /* Keep specific initialism */ }
+        else if (shapeClass1 === "circle-mark") { /* Keep specific initialism */ }
+        else if (shapeClass1 === "triangle-mark") { /* Keep specific initialism */ }
 
         // --- Setup for Power 2 ---
         const p2 = card.secondaryPowerName;
@@ -1130,9 +1172,9 @@ function createCardEl(card) {
         else if (triangles.includes(p2)) shapeClass2 = "triangle-mark";
         
         let displayPowerName2 = getInitialism(p2);
-        if (shapeClass2 === "star-mark") displayPowerName2 = getInitialism("スター");
-        else if (shapeClass2 === "circle-mark") displayPowerName2 = getInitialism("エモーション");
-        else if (shapeClass2 === "triangle-mark") displayPowerName2 = getInitialism("マイナス");
+        if (shapeClass2 === "star-mark") { /* Keep specific initialism */ }
+        else if (shapeClass2 === "circle-mark") { /* Keep specific initialism */ }
+        else if (shapeClass2 === "triangle-mark") { /* Keep specific initialism */ }
 
         div.innerHTML = `
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
@@ -1437,6 +1479,16 @@ function handleFieldClick(card, i) {
             hideAttackMenu(); // Hide menu if deselected
         } else {
             state.selectedCard = card;
+            if (state.selectedCard.specialAbility === 'kari_heal' && state.selectedCard.hp < state.selectedCard.maxHp) {
+                // If Kari-Heal is selected and not at full HP, trigger heal
+                state.selectedCard.hp = state.selectedCard.maxHp;
+                addLog(`${state.selectedCard.rank}がHPを全回復した！`);
+                state.selectedCard = null; // Deselect after healing
+                hideAttackMenu();
+                render();
+                return; // Stop further processing
+            }
+
             if (!state.gameOver && state.turn === 'player') { // Only show menu if player's turn and not game over
                 showAttackMenu(card); // Show attack menu near the card
             }
@@ -1485,6 +1537,14 @@ function handleAttack(targetCard) {
         return;
     }
 
+    if (attacker.isSleeping) {
+        addLog(`${attacker.rank}は眠っていて攻撃できない！`);
+        hideAttackMenu();
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
     if (state.player.attackedIds.includes(attacker.id)) {
         addLog(getFormattedText('log_card_already_attacked', { rank: attacker.rank }));
         return;
@@ -1500,6 +1560,15 @@ function handleAttack(targetCard) {
         return; // Divert from normal attack flow
     }
 
+    // --- Kari-Heal: Cannot attack ---
+    if (attacker.specialAbility === 'kari_heal') {
+        addLog(`${attacker.rank}は攻撃できません！`);
+        hideAttackMenu();
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
     if (attacker.specialAbility === 'copy') {
         attacker.value = targetCard.value; // Copy the target's attack value
         addLog(`【コピー】の能力で ${attacker.rank} の攻撃力が ${attacker.value} になった！`);
@@ -1508,6 +1577,12 @@ function handleAttack(targetCard) {
     if (attacker.specialAbility === 'abnormal_state') {
         targetCard.abnormalState = true;
         addLog(getFormattedText('log_abnormal_state_applied', { rank: targetCard.rank }));
+    }
+
+    // --- Kari-Sleep: Apply sleep status to target ---
+    if (attacker.specialAbility === 'kari_sleep') {
+        targetCard.isSleeping = true;
+        addLog(`${targetCard.rank}は眠ってしまった！`);
     }
     
     const totalA = attacker.value;
@@ -1668,6 +1743,11 @@ function opponentAI() {
     // Opponent attacks
     cardsOnOpponentField.forEach(oppCard => {
             if (!oppCard || opponentAttackedIds.includes(oppCard.id)) { // 攻撃済み、または無効なカード
+                return;
+            }
+            // --- Kari-Sleep: Prevent attacking when asleep ---
+            if (oppCard.isSleeping) {
+                addLog(`${oppCard.rank}は眠っていて攻撃できない！`);
                 return;
             }
 
