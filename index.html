@@ -832,7 +832,7 @@ function createCardUI(c, isPool) {
                 return;
             }
             // Preserve monsterName if it's a monster card
-            state.editCards.push(new Card(c.suit, c.rank, c.type, c.monsterName)); 
+            state.editCards.push(new Card(c.suit, c.rank, c.type, c.monsterName, { ...c })); 
         } else { 
             // This part is for removing cards from the deck, which is correct.
             // Find the specific card instance to remove.
@@ -1328,6 +1328,9 @@ function render() {
     const isCoinToss = state.coinTossAttacker !== null;
     document.getElementById('battle-controls').style.display = (!state.canPlaceCard && !isCoinToss) ? 'flex' : 'none';
     document.getElementById('cointoss-controls').style.display = isCoinToss ? 'flex' : 'none';
+    if (isCoinToss) {
+        console.log('cointoss-controls visibility set to FLEX'); // Added log
+    }
 
     document.getElementById('power-btn').disabled = state.player.powerInjected || state.turn !== 'player';
 }
@@ -1496,6 +1499,7 @@ function handleAttack(targetCard) {
 
     // Handle special abilities
     if (attacker.specialAbility === 'cointoss') {
+        console.log('Kari-Coin special ability (cointoss) triggered!'); // Added log
         state.coinTossAttacker = attacker;
         state.coinTossTarget = targetCard;
         document.getElementById('status-text').textContent = '運命のコイントス！';
@@ -1850,7 +1854,7 @@ function startGameWithDeck(deckId) {
     state = getInitialState(); // Reset all state variables
 
     // 1. Player's deck setup
-    let playerDeck = parsedDeck.map(d => new Card(d.suit, d.rank, d.type, d.monsterName));
+    let playerDeck = parsedDeck.map(d => new Card(d.suit, d.rank, d.type, d.monsterName, { ...d }));
     // Shuffle player's deck
     for (let i = playerDeck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
