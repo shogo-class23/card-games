@@ -1028,12 +1028,12 @@ function createCardEl(card) {
         div.innerHTML = `
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
             <div style="font-size:0.42em; text-align:center; padding:3px; font-weight:bold; line-height:1.1; word-break:break-all;">${card.rank}</div>
+            <div class="symbol-container" style="position: absolute; top: 50%; left: 5px; transform: translateY(-50%); width: 30px; height: 30px;">
                 <div class="common-mark ${shapeClass}"></div>
                 <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
                     ${displayPowerName}
                 </div>
             </div>
-
             <div style="position:absolute; bottom:3px; width:100%; text-align:center; font-size:0.5em; font-weight:bold; color:#333;">
                 P:${card.attachedPower}/${card.requiredPower} A:${card.value}
             </div>
