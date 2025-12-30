@@ -1133,7 +1133,7 @@ function createCardEl(card) {
                 </div>
             </div>
 
-            <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>
+            <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower} A:${card.value}</div>
         `;
     } else {
         // 【普通のトランプ】今まで通りの表示
@@ -1141,7 +1141,7 @@ function createCardEl(card) {
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
             <div style="font-size:1.2em; text-align:left; padding:3px; font-weight:bold;">${card.rank}</div>
             <div style="font-size:0.8em; text-align:left; padding-left:3px;">${card.suit}</div>
-            <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower}<br>A:${card.value}</div>
+            <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower} A:${card.value}</div>
         `;
     }
     return div;
