@@ -313,6 +313,26 @@ function generateTrumpName() {
 }
 // --- ここまで名前の生成ロジック ---
 
+function getInitialism(powerName) {
+    const mapping = {
+        "ヒール": "H", "チャーム": "Ch", "イミテイト": "Im", "チェンジ": "Cg", "プレイ": "P",
+        "グループ": "G", "スリープ": "Sl", "イレイス": "Er", "エンバイロンメント": "En", "フェイク": "Fk",
+        "オール": "Al", "ネザー": "N", "チエ": "Ce", "コピー": "Cp",
+        "アングリー": "Ag", "ジョイ": "J", "ソロー": "Sr", "プレシャー": "Ps", "ラブ": "L",
+        "ヘイト": "Ht", "フィアー": "Fr", "サプライズ": "Sp", "ウォント": "Wt", "アバンダンド": "Ab",
+        "ポイズン": "Po", "ダーティ": "Di", "ブラッド": "Bl", "パラリシス": "Pl", "イルネス": "Il",
+        "アシッド": "Ac", "タイヤード": "Ti",
+        "チェック": "Ck", "ドット": "Do", "ワールプール": "Wp", "メロディー": "Me",
+        "ファイヤー": "F", "ウォーター": "W", "ウィンド": "Wd", "ランド": "Ld",
+        "マウンテン": "Mt",
+        "スター": "St",
+        "エモーション": "Em",
+        "マイナス": "Mn",
+        "スリープ": "Sl"
+    };
+    return mapping[powerName] || powerName;
+}
+
 const languageData = {
     en: {
         'adventure_battle': 'ADVENTURE / BATTLE',
@@ -1012,17 +1032,17 @@ function createCardEl(card) {
     } else if (card.specialAbility === 'cointoss' || card.specialAbility === 'copy' || card.specialAbility === 'abnormal_state') {
         const p = card.powerName;
         let shapeClass = "square-mark"; // Default
-        let displayPowerName = p;
+        let displayPowerName = getInitialism(p);
 
         const stars = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ", "コピー"];
         const triangles = ["ポイズン", "ダーティ", "ブラッド", "パラリシス", "イルネス", "アシッド", "タイヤード"];
 
         if (stars.includes(p)) {
             shapeClass = "star-mark";
-            displayPowerName = "スター";
+            displayPowerName = getInitialism("スター");
         } else if (triangles.includes(p)) {
             shapeClass = "triangle-mark";
-            displayPowerName = "マイナス";
+            displayPowerName = getInitialism("マイナス");
         }
 
         div.innerHTML = `
@@ -1057,13 +1077,13 @@ function createCardEl(card) {
         else if (triangles.includes(p)) shapeClass = "triangle-mark";
         else if (patterns.includes(p)) shapeClass = `pattern-mark pattern-${p}`;
 
-        let displayPowerName = card.powerName;
+        let displayPowerName = getInitialism(card.powerName);
         if (shapeClass === "star-mark") {
-            displayPowerName = "スター";
+            displayPowerName = getInitialism("スター");
         } else if (shapeClass === "circle-mark") {
-            displayPowerName = "エモーション";
+            displayPowerName = getInitialism("エモーション");
         } else if (shapeClass === "triangle-mark") {
-            displayPowerName = "マイナス";
+            displayPowerName = getInitialism("マイナス");
         }
 
         // --- 2. カードの見た目を作るぴょん！ ---
@@ -1097,10 +1117,10 @@ function createCardEl(card) {
         else if (circles.includes(p1)) shapeClass1 = "circle-mark";
         else if (triangles.includes(p1)) shapeClass1 = "triangle-mark";
 
-        let displayPowerName1 = p1;
-        if (shapeClass1 === "star-mark") displayPowerName1 = "スター";
-        else if (shapeClass1 === "circle-mark") displayPowerName1 = "エモーション";
-        else if (shapeClass1 === "triangle-mark") displayPowerName1 = "マイナス";
+        let displayPowerName1 = getInitialism(p1);
+        if (shapeClass1 === "star-mark") displayPowerName1 = getInitialism("スター");
+        else if (shapeClass1 === "circle-mark") displayPowerName1 = getInitialism("エモーション");
+        else if (shapeClass1 === "triangle-mark") displayPowerName1 = getInitialism("マイナス");
 
         // --- Setup for Power 2 ---
         const p2 = card.secondaryPowerName;
@@ -1109,10 +1129,10 @@ function createCardEl(card) {
         else if (circles.includes(p2)) shapeClass2 = "circle-mark";
         else if (triangles.includes(p2)) shapeClass2 = "triangle-mark";
         
-        let displayPowerName2 = p2;
-        if (shapeClass2 === "star-mark") displayPowerName2 = "スター";
-        else if (shapeClass2 === "circle-mark") displayPowerName2 = "エモーション";
-        else if (shapeClass2 === "triangle-mark") displayPowerName2 = "マイナス";
+        let displayPowerName2 = getInitialism(p2);
+        if (shapeClass2 === "star-mark") displayPowerName2 = getInitialism("スター");
+        else if (shapeClass2 === "circle-mark") displayPowerName2 = getInitialism("エモーション");
+        else if (shapeClass2 === "triangle-mark") displayPowerName2 = getInitialism("マイナス");
 
         div.innerHTML = `
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
