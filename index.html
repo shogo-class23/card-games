@@ -790,77 +790,14 @@ function enterEditor() {
     const saved = localStorage.getItem(`deck_cards_${state.editIdx}`);
     state.editCards = saved ? JSON.parse(saved).map(d => new Card(d.suit, d.rank, d.type, d.monsterName)) : [];
 
-    if (editorCardPool.length === 0) {
-        // Add standard cards
-        SUITS.forEach(s => {
-            RANKS.forEach(r => editorCardPool.push(new Card(s, r)));
-            SUPPORTS.forEach(a => editorCardPool.push(new Card(s, a, 'support')));
-        });
-
-        // Add a selection of monster cards
-        const numMonsterCardsInPool = 20;
-        let generatedMonsterNames = new Set();
-        while (editorCardPool.filter(c => c.monsterName && !c.specialAbility).length < numMonsterCardsInPool) {
-            const monsterCard = generateRandomMonsterCard();
-            if (!generatedMonsterNames.has(monsterCard.displayName)) {
-                generatedMonsterNames.add(monsterCard.displayName);
-                editorCardPool.push(monsterCard);
-            }
-        }
-
-        // Add special card 'Karikoin'
-        const karikoin = new Card('special', 'カリコイン', 'unit', 'カリコイン', { 
-            hp: 7, 
-            maxHp: 7, 
-            value: 10, // Base value for display, actual damage is conditional
-            requiredPower: 2, 
-            powerName: 'プレイ', 
-            specialAbility: 'cointoss' 
-        });
-        editorCardPool.push(karikoin);
-
-        const kariijou = new Card('special', 'カリイジョウ', 'unit', 'カリイジョウ', {
-            hp: 5,
-            maxHp: 5,
-            value: 5,
-            requiredPower: 2,
-            powerName: 'アシッド', // Minus Power
-            specialAbility: 'abnormal_state'
-        });
-        editorCardPool.push(kariijou);
-
-        const karikopi = new Card('special', 'カリコピー', 'unit', 'カリコピー', {
-            hp: 6,
-            maxHp: 6,
-            value: 4, // Base value, will be changed by copy ability
-            requiredPower: 3,
-            powerName: 'コピー',
-            specialAbility: 'copy'
-        });
-        editorCardPool.push(karikopi);
-
-        // --- New card: Kari-Heal ---
-        const kariheal = new Card('special', 'カリヒール', 'unit', 'カリヒール', {
-            hp: 8,
-            maxHp: 8,
-            value: 0, // Cannot attack
-            requiredPower: 2,
-            powerName: 'ヒール', // Heal power
-            specialAbility: 'kari_heal'
-        });
-        editorCardPool.push(kariheal);
-
-        // --- New card: Kari-Sleep ---
-        const karisleep = new Card('special', 'カリスリープ', 'unit', 'カリスリープ', {
-            hp: 5,
-            maxHp: 5,
-            value: 3, // Can attack, but for sleep effect
-            requiredPower: 3,
-            powerName: 'スリープ', // Sleep power
-            specialAbility: 'kari_sleep'
-        });
-        editorCardPool.push(karisleep);
+    // Ensure fullCollection is initialized first if it hasn't been already
+    if (fullCollection.length === 0) {
+        initializeAndRenderCollection(false); // Call without rendering to avoid double-render or screen change
     }
+
+    // Now, populate editorCardPool from fullCollection each time the editor is entered
+    // This makes sure newly generated monsters are included
+    editorCardPool = [...fullCollection];
     
     document.getElementById('editor-name-search-input').value = '';
     document.getElementById('editor-power-search-input').value = '';
@@ -884,7 +821,12 @@ function createCardUI(c, isPool) {
                 alert(getText('deck_30_cards_max'));
                 return;
             }
-            const count = state.editCards.filter(deckCard => deckCard.suit === c.suit && deckCard.rank === c.rank).length;
+            let count;
+            if (c.monsterName) { // If it's a monster card, check by monsterName
+                count = state.editCards.filter(deckCard => deckCard.monsterName === c.monsterName).length;
+            } else { // It's a regular card, check by suit and rank
+                count = state.editCards.filter(deckCard => deckCard.suit === c.suit && deckCard.rank === c.rank).length;
+            }
             if (count >= 2) {
                 alert(getText('same_card_2_max'));
                 return;
@@ -951,10 +893,10 @@ function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     updateUIText(); // Update text every time a screen is shown
-    if (id === 'collection-screen') initializeAndRenderCollection();
+    if (id === 'collection-screen') initializeAndRenderCollection(true);
 }
 
-function initializeAndRenderCollection() {
+function initializeAndRenderCollection(shouldRender = true) {
     if (fullCollection.length === 0) {
         // Display regular cards first
         SUITS.forEach(s => {
@@ -992,7 +934,7 @@ function initializeAndRenderCollection() {
             maxHp: 6,
             value: 4, // Base value, will be changed by copy ability
             requiredPower: 3,
-            powerName: 'コピー',
+            powerName: 'イミテイト',
             specialAbility: 'copy'
         });
         fullCollection.push(karikopi);
@@ -1019,7 +961,9 @@ function initializeAndRenderCollection() {
         });
         fullCollection.push(karisleep);
     }
-    renderCardGrid(fullCollection);
+    if (shouldRender) {
+        renderCardGrid(fullCollection);
+    }
 }
 
 function renderCardGrid(cards) {
