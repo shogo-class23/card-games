@@ -809,7 +809,7 @@ function enterEditor() {
         });
         editorCardPool.push(kariijou);
 
-        const kalistar = new Card('special', 'カリスター', 'unit', 'カリスター', {
+        const karikopi = new Card('special', 'カリコピー', 'unit', 'カリコピー', {
             hp: 6,
             maxHp: 6,
             value: 4, // Base value, will be changed by copy ability
@@ -817,7 +817,7 @@ function enterEditor() {
             powerName: 'コピー',
             specialAbility: 'copy'
         });
-        editorCardPool.push(kalistar);
+        editorCardPool.push(karikopi);
     }
     
     document.getElementById('editor-name-search-input').value = '';
@@ -945,7 +945,7 @@ function initializeAndRenderCollection() {
         });
         fullCollection.push(kariijou);
 
-        const kalistar = new Card('special', 'カリスター', 'unit', 'カリスター', {
+        const karikopi = new Card('special', 'カリコピー', 'unit', 'カリコピー', {
             hp: 6,
             maxHp: 6,
             value: 4, // Base value, will be changed by copy ability
@@ -953,7 +953,7 @@ function initializeAndRenderCollection() {
             powerName: 'コピー',
             specialAbility: 'copy'
         });
-        fullCollection.push(kalistar);
+        fullCollection.push(karikopi);
     }
     renderCardGrid(fullCollection);
 }
@@ -1009,18 +1009,28 @@ function createCardEl(card) {
     if (card.isFaceDown) {
         div.className = 'card back';
         div.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 2em; color: white;">?</div>`;
-    } else if (card.specialAbility === 'cointoss') {
-        const p = card.powerName; // Should be 'プレイ'
-        let shapeClass = "square-mark";
-        const stars = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ"];
-        if (stars.includes(p)) shapeClass = "star-mark";
+    } else if (card.specialAbility === 'cointoss' || card.specialAbility === 'copy' || card.specialAbility === 'abnormal_state') {
+        const p = card.powerName;
+        let shapeClass = "square-mark"; // Default
+        let displayPowerName = p;
+
+        const stars = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ", "コピー"];
+        const triangles = ["ポイズン", "ダーティ", "ブラッド", "パラリシス", "イルネス", "アシッド", "タイヤード"];
+
+        if (stars.includes(p)) {
+            shapeClass = "star-mark";
+            displayPowerName = "スター";
+        } else if (triangles.includes(p)) {
+            shapeClass = "triangle-mark";
+            displayPowerName = "マイナス";
+        }
 
         div.innerHTML = `
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
             <div style="font-size:0.42em; text-align:center; padding:3px; font-weight:bold; line-height:1.1; word-break:break-all;">${card.rank}</div>
                 <div class="common-mark ${shapeClass}"></div>
                 <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
-                    スター
+                    ${displayPowerName}
                 </div>
             </div>
 
