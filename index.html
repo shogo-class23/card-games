@@ -333,74 +333,73 @@ function getInitialism(powerName) {
     return mapping[powerName] || powerName;
 }
 
-// 新規：状態異常をカードに適用する
-function applyStatusEffect(targetCard, effectName, duration) {
+// 新規：状態異常をカードに適用する（永続版）
+function applyStatusEffect(targetCard, effectName) {
     if (!targetCard) return;
 
     // すでに同じ効果がかかっているか確認
     const existingEffect = targetCard.statusEffects.find(e => e.name === effectName);
-    if (existingEffect) {
-        existingEffect.duration = Math.max(existingEffect.duration, duration); // 効果時間が長い方で上書き
-    } else {
-        targetCard.statusEffects.push({ name: effectName, duration: duration });
+    
+    // まだかかっていなければ追加するぴょん！
+    // ターン数のカウント（duration）などは持たせないことで永続にするぴょん。
+    if (!existingEffect) {
+        targetCard.statusEffects.push({ name: effectName });
+        addLog(getFormattedText('log_status_applied', { effect: effectName, rank: targetCard.rank }));
     }
-    addLog(getFormattedText('log_status_applied', { effect: effectName, rank: targetCard.rank, duration: duration }));
 }
 
 // 新規：ターン終了時に状態異常をチェックする
+// ターン終了時に状態異常をチェックする（解除処理なし・墓地送りまで継続）
 function stateCheck() {
-    addLog("▼ 状態チェック ▼");
+    addLog("▼ 状態チェック（永続パワー発動中！） ▼");
+
     const allCards = [...state.player.field, ...state.opponent.field].filter(c => c);
-
+    
     allCards.forEach(card => {
-        if (card.statusEffects.length === 0) return;
+        if (!card || card.statusEffects.length === 0) return;
 
-        // 効果を適応し、期限切れをフィルタリング
-        const remainingEffects = [];
         card.statusEffects.forEach(effect => {
             let damage = 0;
+            // ここで各マイナスパワーのダメージ量を決めるぴょん
             if (effect.name === 'アシッド') {
-                damage = 1;
+                damage = 1; 
             } else if (effect.name === 'イルネス') {
                 damage = 2;
+            } else if (effect.name === 'ポイズン') {
+                damage = 1;
             }
+            // 他の状態異常も、ここにダメージ設定を追加できるぴょん！
 
             if (damage > 0) {
                 card.hp -= damage;
                 addLog(getFormattedText('log_status_damage', { rank: card.rank, effect: effect.name, damage: damage }));
             }
-
-            effect.duration--;
-
-            if (effect.duration > 0) {
-                remainingEffects.push(effect);
-            } else {
-                addLog(getFormattedText('log_status_ended', { rank: card.rank, effect: effect.name }));
-            }
         });
 
-        card.statusEffects = remainingEffects;
+        // ここでターン数を減らす処理（effect.duration-- など）を書いていないから、
+        // モンスターがフィールドにいる限り、ずっと状態異常は消えないぴょん！
 
-        // HPチェック
+        // HPチェック：0になったら墓地（グラウンド）送りだぴょん
         if (card.hp <= 0) {
             if (state.player.field.includes(card)) {
                 const idx = state.player.field.indexOf(card);
-                state.player.field[idx] = null;
-                state.player.grave++;
-                state.opponent.points++;
+                state.player.field[idx] = null; // フィールドから消去
+                state.player.grave++; // プレイヤーの墓地へ
+                state.opponent.points++; // 相手にポイント
                 addLog(getFormattedText('log_player_card_destroyed', { rank: card.rank }));
             } else if (state.opponent.field.includes(card)) {
                 const idx = state.opponent.field.indexOf(card);
-                state.opponent.field[idx] = null;
-                state.opponent.grave++;
-                state.player.points++;
+                state.opponent.field[idx] = null; // フィールドから消去
+                state.opponent.grave++; // 相手の墓地へ
+                state.player.points++; // プレイヤーにポイント
                 addLog(getFormattedText('log_target_destroyed', { rank: card.rank }));
             }
         }
     });
+
     addLog("▲ 状態チェック終了 ▲");
-    render(); // UIを更新
-    checkWin(); // 勝敗チェック
+    render(); 
+    checkWin();
 }
 
 
@@ -435,7 +434,7 @@ const languageData = {
         'lose_message': 'YOU LOSE...',
         'draw_message': 'DRAW',
         // Game Logs
-        'log_status_applied': '[${rank}] is now affected by [${effect}] for ${duration} turns!',
+        'log_status_applied': '[${rank}] is now affected by [${effect}]!',
         'log_status_damage': '[${rank}] takes ${damage} damage from [${effect}].',
         'log_status_ended': 'The [${effect}] on [${rank}] has worn off.',
         'log_support_card_not_in_battle': 'Cannot use support cards now.',
@@ -525,7 +524,7 @@ const languageData = {
         'lose_message': 'あなたの敗北...',
         'draw_message': '引き分け',
         // Game Logs
-        'log_status_applied': '【${rank}】は[${effect}]状態になった (${duration}ターン)',
+        'log_status_applied': '【${rank}】は[${effect}]状態になった！',
         'log_status_damage': '【${rank}】は[${effect}]で ${damage} ダメージを受けた。',
         'log_status_ended': '【${rank}】の[${effect}]状態が解除された。',
         'log_support_card_not_in_battle': 'サポートカードを使用できません。',
@@ -1111,7 +1110,7 @@ function createCardEl(card) {
             effectBadge.style.borderRadius = '3px';
             effectBadge.style.fontWeight = 'bold';
             const initial = getInitialism(effect.name) || effect.name.substring(0,2);
-            effectBadge.textContent = `${initial}${effect.duration}`;
+            effectBadge.textContent = `${initial}`;
             statusContainer.appendChild(effectBadge);
         });
         div.appendChild(statusContainer);
@@ -1254,6 +1253,412 @@ function createCardEl(card) {
         `;
     }
     return div;
+}
+
+// モンスターカードを生成する関数
+function generateRandomMonsterCard() {
+    const monsterName = generateHuntingName();
+    const randomSuit = getRandomElement(SUITS);
+    // For simplicity, monster cards will have a 'M' rank (or any non-standard rank)
+    // and their actual name will be in displayName.
+    return new Card(randomSuit, 'M', 'unit', monsterName);
+}
+
+// テキストが要素内に収まるようにフォントサイズを調整するヘルパー関数
+function adjustFontSizeToFit(element, maxFontSizeEm = 0.8, minFontSizeEm = 0.6) {
+    if (!element || !element.textContent) return;
+
+    let currentFontSizeEm = maxFontSizeEm;
+    element.style.fontSize = `${currentFontSizeEm}em`;
+
+    // 親要素の幅を取得 (カードの幅に依存するため)
+    const parentWidth = element.parentElement ? element.parentElement.offsetWidth : 0;
+    const padding = 10; // カードのパディングを考慮
+    const availableWidth = parentWidth - padding; // テキストが利用できる幅
+
+    // テキストがオーバーフローしている間、フォントサイズを縮小
+    while (element.scrollWidth > availableWidth && currentFontSizeEm > minFontSizeEm) {
+        currentFontSizeEm -= 0.05; // 0.05emずつ縮小
+        element.style.fontSize = `${currentFontSizeEm}em`;
+    }
+    // テキストがオーバーフローしなくても、最小サイズより大きい場合は、最大サイズにリセットすることも考慮できるが、
+    // 今回は単純に収まるまで縮小するのみ
+}
+
+
+    // Helper to find the DOM element of a card
+    function getCardElement(card) {
+        if (!card) return null;
+        const els = document.querySelectorAll(`[data-card-id="${card.id}"]`); // Use attribute selector for efficiency
+        for (const el of els) {
+            // Check if this is a player's field card (or hand card, if needed)
+            // For menu positioning, we assume it's a field card
+            if (el.closest('#player-field') || el.closest('#player-hand')) { // Check if it's in player area
+                return el;
+            }
+        }
+        return null;
+    }
+
+    function showAttackMenu(card) {
+        const attackMenu = document.getElementById('attack-menu');
+        const cardEl = getCardElement(card); // Get the actual DOM element for the selected card
+
+        if (cardEl) {
+            const rect = cardEl.getBoundingClientRect();
+            // Position to the right of the card, relative to the game-container
+            const gameContainerRect = document.querySelector('.game-container').getBoundingClientRect();
+            attackMenu.style.left = `${rect.right + 10 - gameContainerRect.left}px`;
+            attackMenu.style.top = `${rect.top - gameContainerRect.top}px`;
+            attackMenu.style.display = 'flex';
+        } else {
+            console.error("Could not find DOM element for selected card:", card);
+        }
+    }
+
+    function hideAttackMenu() {
+        document.getElementById('attack-menu').style.display = 'none';
+        state.isAttacking = false; // Reset attacking state
+    }
+    
+function useSupportCard(card) {
+    if (state.gameOver || state.turn !== 'player') {
+        addLog(getText('log_support_card_not_in_battle'));
+        return;
+    }
+
+    let cardUsed = false;
+    switch (card.rank) {
+        case '2DRAW':
+            addLog(getText('log_use_2draw'));
+            for (let i = 0; i < 2; i++) {
+                if (state.player.deck.length > 0) {
+                    state.player.hand.push(state.player.deck.shift());
+                } else {
+                    addLog(getText('log_deck_empty'));
+                    break;
+                }
+            }
+            cardUsed = true;
+            break;
+        case 'HEAL':
+            addLog(getText('log_use_heal'));
+            state.isHealing = true; // 「今から回復するよ」というモードにする
+            cardUsed = true;
+            break;
+        case 'SKIP':
+            addLog(getText('log_use_skip'));
+            state.skipOpponentTurn = true; // Set a flag to skip opponent's turn
+            cardUsed = true;
+            break;
+    }
+
+    if (cardUsed) {
+        // Remove card from hand and move to graveyard
+        state.player.hand = state.player.hand.filter(c => c !== card);
+        state.player.grave++;
+        state.selectedCard = null; // Deselect
+        render();
+    }
+}
+
+function render() {
+    renderField('player-field', state.player.field, false);
+    renderField('opponent-field', state.opponent.field, true);
+    const handEl = document.getElementById('player-hand'); handEl.innerHTML = '';
+    state.player.hand.forEach(card => {
+        const el = createCardEl(card);
+        el.onclick = () => { 
+            if(state.gameOver) return;
+
+            if (state.canPlaceCard) { // --- 配置フェーズ中の処理 ---
+                if (card.isSupport) {
+                    addLog(getText('log_support_card_not_on_place'));
+                } else {
+                    state.selectedCard = card; // ユニットカードは選択
+                    render();
+                }
+            } else { // --- バトルフェーズ中の処理 ---
+                if (card.isSupport) {
+                    useSupportCard(card); // サポートカードは直接使用
+                } else {
+                    state.selectedCard = card; // ユニットカードは選択
+                    render(); 
+                }
+            }
+        };
+        if (state.selectedCard === card) el.classList.add('selected');
+        handEl.appendChild(el);
+    });
+
+    // Hide attack menu when rendering if no card is selected
+    if (!state.selectedCard) {
+        hideAttackMenu(); // Ensure menu is hidden if no card is selected
+    }
+    
+    const oppHandEl = document.getElementById('opponent-hand'); oppHandEl.innerHTML = '';
+    for(let i=0; i<state.opponent.handCount; i++) {
+        const back = document.createElement('div'); back.className = 'card back';
+        oppHandEl.appendChild(back);
+    }
+    document.getElementById('opp-hp').textContent = `${state.opponent.points}/5`;
+    document.getElementById('ply-hp').textContent = `${state.player.points}/5`;
+    document.getElementById('opp-power-display').textContent = state.opponent.power;
+    document.getElementById('ply-power-display').textContent = state.player.power;
+    document.getElementById('opp-hand-count').textContent = state.opponent.handCount;
+    document.getElementById('ply-hand-count').textContent = state.player.hand.length;
+    document.getElementById('opp-deck').textContent = `${state.opponent.deck.length}/30`;
+    document.getElementById('ply-deck').textContent = `${state.player.deck.length}/30`;
+    document.getElementById('opp-graveyard').textContent = state.opponent.grave;
+    document.getElementById('ply-graveyard').textContent = state.player.grave;
+    document.getElementById('ok-btn').style.display = state.canPlaceCard ? 'block' : 'none';
+    
+    document.getElementById('battle-controls').style.display = !state.canPlaceCard ? 'flex' : 'none';
+    
+    document.getElementById('power-btn').disabled = state.player.powerInjected || state.turn !== 'player';
+}
+
+function renderField(id, field, isOpponent) {
+    const el = document.getElementById(id); el.innerHTML = '';
+    field.forEach((card, i) => {
+        const slot = document.createElement('div'); slot.className = 'card-slot'; slot.style.gridArea = `slot${i}`;
+        if (card) {
+            const cardEl = createCardEl(card);
+            // Highlight targetable opponent cards when isAttacking is true
+            if (state.isAttacking && isOpponent) {
+                const targetCardIndex = state.opponent.field.indexOf(card);
+                // Opponent field layout is reversed, so "front" to player is opponent's slots 3,4,5
+                // which correspond to visual positions 1,2,3 for the opponent.
+                if (targetCardIndex !== -1 && targetCardIndex < 3) { // Only highlight back row
+                    cardEl.style.outline = '4px solid red'; // Visual cue for targetable
+                }
+            }
+            if (!isOpponent && state.player.attackedIds.includes(card.id)) cardEl.classList.add('attacked');
+            if (state.selectedCard === card) cardEl.classList.add('selected');
+
+            cardEl.onclick = (e) => {
+                e.stopPropagation();
+                if (state.gameOver) return;
+                if (isOpponent) {
+                    if (state.isAttacking) { // Only attack if in attacking state
+                        handleAttack(card);
+                        hideAttackMenu(); // Hide menu after attack attempt
+                    } else {
+                        addLog(getText('log_must_press_attack_button'));
+                    }
+                } else { // Player's own card clicked
+                    if (state.isHealing) {
+                        healCard(card); // HEALモードなら回復
+                    } else {
+                        handleFieldClick(card, i); // 通常はフィールドクリック処理
+                    }
+                }
+            };
+            slot.appendChild(cardEl);
+        } else if ((state.canPlaceCard || state.turn === 'player') && !isOpponent) {
+            slot.onclick = () => placeCard(i);
+        }
+        el.appendChild(slot);
+    });
+}
+
+function placeCard(i) {
+    if (!state.selectedCard) {
+        addLog(getText('log_select_unit_from_hand'));
+        return;
+    }
+    // Prevent placing a card that is already on the field
+    if (!state.player.hand.includes(state.selectedCard)) {
+        return;
+    }
+    if (state.selectedCard.isSupport) {
+        addLog(getText('log_support_card_no_place'));
+        return;
+    }
+    
+    const cardToPlace = state.selectedCard;
+
+    state.player.field[i] = cardToPlace;
+    state.player.hand = state.player.hand.filter(c => c !== cardToPlace);
+    addLog(getFormattedText('log_card_placed', { rank: cardToPlace.rank }));
+    state.selectedCard = null;
+    hideAttackMenu();
+    render();
+}
+
+function healCard(targetCard) {
+    if (!targetCard || targetCard.isSupport) {
+        addLog(getText('log_only_unit_can_be_healed'));
+        return;
+    }
+    targetCard.hp = Math.min(targetCard.maxHp, targetCard.hp + 3);
+    addLog(getFormattedText('log_heal_success', { rank: targetCard.rank, hp: targetCard.hp }));
+    
+    state.isHealing = false; // 回復モードを終了
+    render();
+}
+
+function handleFieldClick(card, i) {
+    if (state.canPlaceCard) {
+        state.player.hand.push(card); state.player.field[i] = null;
+        addLog(getFormattedText('log_card_returned_to_hand', { rank: card.rank }));
+        hideAttackMenu(); // Hide menu if card is moved
+    } else { // Battle phase
+        if (state.isHealing) { // If in healing mode, heal the card.
+            healCard(card);
+            return;
+        }
+
+        // If we are in attack mode and click another of our own cards, cancel the attack mode.
+        if (state.isAttacking) {
+            hideAttackMenu();
+        }
+        
+        if (state.selectedCard === card) { // Deselect if already selected
+            state.selectedCard = null;
+            hideAttackMenu(); // Hide menu if deselected
+        } else {
+            state.selectedCard = card;
+            if (state.selectedCard.specialAbility === 'kari_heal' && state.selectedCard.hp < state.selectedCard.maxHp) {
+                // If Kari-Heal is selected and not at full HP, trigger heal
+                state.selectedCard.hp = state.selectedCard.maxHp;
+                addLog(`${state.selectedCard.rank}がHPを全回復した！`);
+                state.selectedCard = null; // Deselect after healing
+                hideAttackMenu();
+                render();
+                return; // Stop further processing
+            }
+
+            if (!state.gameOver && state.turn === 'player') { // Only show menu if player's turn and not game over
+                showAttackMenu(card); // Show attack menu near the card
+            }
+        }
+    }
+    render();
+}
+
+function handlePowerInject() {
+    const c = state.selectedCard;
+    if (c && state.player.field.includes(c) && c.attachedPower < c.requiredPower) {
+        c.attachedPower++; state.player.powerInjected = true;
+        addLog(getFormattedText('log_power_injected', { rank: c.rank }));
+        render();
+    }
+}
+
+function handleAttack(targetCard) {
+    // 最初に基本的なガード条件をチェックするぴょん
+    if (state.canPlaceCard || !state.selectedCard || !state.isAttacking) {
+        addLog(getText('log_select_card_then_attack'));
+        return;
+    }
+    const attacker = state.selectedCard; // 攻撃カードは内部で取得するぴょん
+
+    // 攻撃者の位置とターゲットの位置に関するチェックもここで行うぴょん
+    const attackerIndex = state.player.field.indexOf(attacker);
+    if (attackerIndex === -1 || attackerIndex > 2) {
+        addLog(getText('log_cannot_attack_from_back_row'));
+        return;
+    }
+    const targetCardIndex = state.opponent.field.indexOf(targetCard);
+    if (targetCardIndex === -1 || targetCardIndex >= 3) {
+        addLog(getFormattedText('log_invalid_attack_target_position', { rank: targetCard.rank }));
+        return;
+    }
+
+    // 攻撃前のログ表示
+    addLog(getFormattedText('log_attack_start', { rank: attacker.rank }));
+
+    // 1. まずコイントスが必要なカードかチェックするぴょん！
+    // 2. 判定が「!」なしの正しい向きになったぴょん。
+    if (attacker.specialAbility === 'cointoss') {
+        state.coinTossAttacker = attacker; // コイントスの処理に必要な情報を保存するぴょん
+        state.coinTossTarget = targetCard; 
+
+        // ここでコイントス画面を表示する命令を呼び出すぴょん！
+        showScreen('coin-flip-screen');
+        const title = document.getElementById('coin-flip-title');
+        title.textContent = "カリコイン・アタック！"; // コイントス画面のタイトルを設定するぴょん
+        
+        // コイントス画面のボタンや結果表示も初期化するぴょん
+        document.getElementById('cointoss-btn').style.display = 'inline-block'; // ボタンを表示するぴょん
+        document.getElementById('cointoss-result').textContent = ''; // 前回の結果をクリアするぴょん
+        
+        // 3. コイントスの実行は handleCoinToss 関数に任せるぴょん
+        return; // コイントス処理に移行したら、これ以上 handleAttack は実行しないぴょん！
+    }
+
+    // コイントス不要なカード（トランプ型など）はそのまま殴るぴょん
+    executeNormalAttack(targetCard, attacker); // 通常攻撃ヘルパー関数を呼び出すぴょん
+};
+
+// 【新規追加】通常攻撃のロジックをまとめたヘルパー関数だぴょん！
+function executeNormalAttack(targetCard, attacker) {
+    if (attacker.attachedPower < attacker.requiredPower) {
+        addLog(getText('log_attack_fail_no_power'));
+        return;
+    }
+
+    if (attacker.isSleeping) {
+        addLog(`${attacker.rank}は眠っていて攻撃できない！`);
+        hideAttackMenu();
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
+    if (state.player.attackedIds.includes(attacker.id)) {
+        addLog(getFormattedText('log_card_already_attacked', { rank: attacker.rank }));
+        return;
+    }
+
+    // その他の特殊能力もここで処理するぴょん（コイントスはhandleAttackで処理済み）
+    if (attacker.specialAbility === 'kari_heal') {
+        addLog(`${attacker.rank}は攻撃できません！`);
+        hideAttackMenu();
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
+    if (attacker.specialAbility === 'abnormal_state') {
+        const effectName = attacker.powerName; // e.g., 'アシッド'
+        applyStatusEffect(targetCard, effectName);
+        state.player.attackedIds.push(attacker.id); // Mark as attacked
+        state.selectedCard = null;
+        render();
+        return; // Important: Stop execution here, no damage dealt
+    }
+
+    if (attacker.specialAbility === 'copy') {
+        attacker.value = targetCard.value;
+        addLog(`【コピー】の能力で ${attacker.rank} の攻撃力が ${attacker.value} になった！`);
+    }
+
+    if (attacker.specialAbility === 'kari_sleep') {
+        targetCard.isSleeping = true;
+        addLog(`${targetCard.rank}は眠ってしまった！`);
+    }
+    
+    const totalA = attacker.value;
+    targetCard.hp -= totalA;
+    state.player.attackedIds.push(attacker.id);
+    
+    addLog(getFormattedText('log_attack_damage', { targetRank: targetCard.rank, totalA: totalA }));
+
+    if (targetCard.hp <= 0) {
+        const idx = state.opponent.field.indexOf(targetCard);
+        if (idx !== -1) {
+            state.opponent.field[idx] = null;
+            state.opponent.grave++;
+            state.player.points++;
+        }
+        addLog(getFormattedText('log_target_destroyed', { rank: targetCard.rank }));
+        if (checkWin()) return;
+    }
+    
+    state.selectedCard = null;
+    render();
 }
 
 // モンスターカードを生成する関数
