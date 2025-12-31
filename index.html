@@ -123,7 +123,11 @@
 </head>
 <body>
 
-<div id="roulette-overlay">先攻を決定します</div>
+<div id="coin-flip-screen" class="screen" style="flex-direction: column; background: rgba(0,0,0,0.9); font-weight: bold; color: #FFF; text-align: center;">
+    <div id="coin-flip-title" style="font-size: 3em; margin-bottom: 20px;"></div>
+    <div id="cointoss-result" style="font-size: 2.2em; font-weight: bold; color: yellow; height: 60px;"></div>
+    <button id="cointoss-btn" class="game-button" style="padding: 15px 30px; font-size: 1.5em; background:#4CAF50" onclick="handleCoinToss()">コイントス！</button>
+</div>
 
 <div id="title-screen" class="screen active">
     <h1 style="font-size: 3em; color:var(--accent); text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">Mark-Inscribed Monster</h1>
@@ -206,10 +210,6 @@
                 <div id="battle-controls" style="display:none; flex-direction: column; gap: 10px; align-items: center;">
                     <button id="power-btn" class="game-button" style="background:#ccac00" onclick="handlePowerInject()">パワーを注入</button>
                     <button id="end-turn-btn" class="game-button" onclick="handleEndTurn()">ターン終了</button>
-                </div>
-                <div id="cointoss-controls" style="display:none; flex-direction: column; gap: 10px; align-items: center;">
-                    <div id="cointoss-result" style="font-size: 1.2em; font-weight: bold; color: yellow;"></div>
-                    <button id="cointoss-btn" class="game-button" style="background:#4CAF50" onclick="handleCoinToss()">コイントス！</button>
                 </div>
             </div>
             <div class="score-display player-score" id="ply-hp">20</div>
@@ -654,24 +654,27 @@ class Card {
         this.powerName = null;
         this.raceName = null;
 
-
-        if (monsterName) { // Logic for monster cards
+        // If it's a special card, its properties are defined entirely by the options.
+        // Otherwise, calculate properties based on whether it's a generic monster or a regular trump card.
+        if (options && options.specialAbility) {
+            // This is a special card. The properties will be applied at the end by Object.assign.
+            // We just need to set initial values so they exist.
+            this.value = 0;
+            this.requiredPower = 0;
+        } else if (monsterName) { // Logic for generic monster cards
             const parts = extractMonsterParts(monsterName);
             this.sizeName = parts.sizeName;
             this.powerName = parts.powerName;
             this.raceName = parts.raceName;
 
-            // This part for displayName might need adjustment if it conflicts with isTripleType logic
-            // But for now, we'll keep it as is, as the createCardEl will explicitly use sizeName/powerName/raceName
-            // for display.
             if (this.sizeName && this.powerName && this.raceName) {
-                this.isTripleType = true; // Add this line
+                this.isTripleType = true;
                 this.displayName = `${this.sizeName}\n${this.powerName}\n${this.raceName}`;
             }
 
             this.value = Math.floor(Math.random() * 10) + 1; // Random value 1-10
             this.requiredPower = getRequiredPowerFromSize(monsterName); // Calculate based on size
-        } else { // Existing logic for regular cards
+        } else { // Existing logic for regular trump cards
             this.value = RANK_VALUES[rank] || 0;
             this.isDoubleType = true;
             // Assign powerName based on suit
@@ -721,8 +724,8 @@ function handleCoinToss() {
     const target = state.coinTossTarget;
     if (!attacker || !target) return;
 
-    // Disable the button to prevent multiple clicks
-    document.getElementById('cointoss-btn').disabled = true;
+    const btn = document.getElementById('cointoss-btn');
+    btn.style.display = 'none'; // Hide button after click to prevent multiple clicks
 
     const resultDiv = document.getElementById('cointoss-result');
     const isHeads = Math.random() < 0.5;
@@ -756,9 +759,7 @@ function handleCoinToss() {
         state.coinTossAttacker = null;
         state.coinTossTarget = null;
         state.selectedCard = null; // Deselect card
-        resultDiv.textContent = '';
-        document.getElementById('status-text').textContent = '自ターン';
-        document.getElementById('cointoss-btn').disabled = false; // Re-enable button
+        showScreen('game-screen'); // Return to the game screen
         render();
         if (checkWin()) return; // Check for win after the toss is fully resolved
     }, 1500);
@@ -788,7 +789,7 @@ function openDeckList(purpose = 'edit') {
 
 function enterEditor() {
     const saved = localStorage.getItem(`deck_cards_${state.editIdx}`);
-    state.editCards = saved ? JSON.parse(saved).map(d => new Card(d.suit, d.rank, d.type, d.monsterName)) : [];
+    state.editCards = saved ? JSON.parse(saved).map(d => new Card(d.suit, d.rank, d.type, d.monsterName, { ...d })) : [];
 
     // Ensure fullCollection is initialized first if it hasn't been already
     if (fullCollection.length === 0) {
@@ -1198,20 +1199,6 @@ function adjustFontSizeToFit(element, maxFontSizeEm = 0.8, minFontSizeEm = 0.6) 
         return null;
     }
 
-    // Helper to find the DOM element of a card
-    function getCardElement(card) {
-        if (!card) return null;
-        const els = document.querySelectorAll(`[data-card-id="${card.id}"]`); // Use attribute selector for efficiency
-        for (const el of els) {
-            // Check if this is a player's field card (or hand card, if needed)
-            // For menu positioning, we assume it's a field card
-            if (el.closest('#player-field') || el.closest('#player-hand')) { // Check if it's in player area
-                return el;
-            }
-        }
-        return null;
-    }
-
     function showAttackMenu(card) {
         const attackMenu = document.getElementById('attack-menu');
         const cardEl = getCardElement(card); // Get the actual DOM element for the selected card
@@ -1325,13 +1312,8 @@ function render() {
     document.getElementById('ply-graveyard').textContent = state.player.grave;
     document.getElementById('ok-btn').style.display = state.canPlaceCard ? 'block' : 'none';
     
-    const isCoinToss = state.coinTossAttacker !== null;
-    document.getElementById('battle-controls').style.display = (!state.canPlaceCard && !isCoinToss) ? 'flex' : 'none';
-    document.getElementById('cointoss-controls').style.display = isCoinToss ? 'flex' : 'none';
-    if (isCoinToss) {
-        console.log('cointoss-controls visibility set to FLEX'); // Added log
-    }
-
+    document.getElementById('battle-controls').style.display = !state.canPlaceCard ? 'flex' : 'none';
+    
     document.getElementById('power-btn').disabled = state.player.powerInjected || state.turn !== 'player';
 }
 
@@ -1384,6 +1366,10 @@ function placeCard(i) {
         addLog(getText('log_select_unit_from_hand'));
         return;
     }
+    // Prevent placing a card that is already on the field
+    if (!state.player.hand.includes(state.selectedCard)) {
+        return;
+    }
     if (state.selectedCard.isSupport) {
         addLog(getText('log_support_card_no_place'));
         return;
@@ -1421,6 +1407,12 @@ function handleFieldClick(card, i) {
             healCard(card);
             return;
         }
+
+        // If we are in attack mode and click another of our own cards, cancel the attack mode.
+        if (state.isAttacking) {
+            hideAttackMenu();
+        }
+        
         if (state.selectedCard === card) { // Deselect if already selected
             state.selectedCard = null;
             hideAttackMenu(); // Hide menu if deselected
@@ -1449,36 +1441,58 @@ function handlePowerInject() {
     if (c && state.player.field.includes(c) && c.attachedPower < c.requiredPower) {
         c.attachedPower++; state.player.powerInjected = true;
         addLog(getFormattedText('log_power_injected', { rank: c.rank }));
-        hideAttackMenu(); // Hide menu after power injection
         render();
     }
 }
 
 function handleAttack(targetCard) {
-    if (state.canPlaceCard || !state.selectedCard || !state.isAttacking) { // Must be in attacking state
+    // 最初に基本的なガード条件をチェックするぴょん
+    if (state.canPlaceCard || !state.selectedCard || !state.isAttacking) {
         addLog(getText('log_select_card_then_attack'));
         return;
     }
-    
-    const attacker = state.selectedCard;
-    const attackerIndex = state.player.field.indexOf(attacker);
+    const attacker = state.selectedCard; // 攻撃カードは内部で取得するぴょん
 
-    // 攻撃者が前衛にいるかチェック
+    // 攻撃者の位置とターゲットの位置に関するチェックもここで行うぴょん
+    const attackerIndex = state.player.field.indexOf(attacker);
     if (attackerIndex === -1 || attackerIndex > 2) {
         addLog(getText('log_cannot_attack_from_back_row'));
         return;
     }
-
-    // Check if the targetCard is in the opponent's back row (slots 0, 1, 2)
     const targetCardIndex = state.opponent.field.indexOf(targetCard);
-    if (targetCardIndex === -1 || targetCardIndex >= 3) { // If not found or in opponent's visual front row (slots 3,4,5)
+    if (targetCardIndex === -1 || targetCardIndex >= 3) {
         addLog(getFormattedText('log_invalid_attack_target_position', { rank: targetCard.rank }));
         return;
     }
-    
-    // 攻撃前のログ
+
+    // 攻撃前のログ表示
     addLog(getFormattedText('log_attack_start', { rank: attacker.rank }));
 
+    // 1. まずコイントスが必要なカードかチェックするぴょん！
+    // 2. 判定が「!」なしの正しい向きになったぴょん。
+    if (attacker.specialAbility === 'cointoss') {
+        state.coinTossAttacker = attacker; // コイントスの処理に必要な情報を保存するぴょん
+        state.coinTossTarget = targetCard; 
+
+        // ここでコイントス画面を表示する命令を呼び出すぴょん！
+        showScreen('coin-flip-screen');
+        const title = document.getElementById('coin-flip-title');
+        title.textContent = "カリコイン・アタック！"; // コイントス画面のタイトルを設定するぴょん
+        
+        // コイントス画面のボタンや結果表示も初期化するぴょん
+        document.getElementById('cointoss-btn').style.display = 'inline-block'; // ボタンを表示するぴょん
+        document.getElementById('cointoss-result').textContent = ''; // 前回の結果をクリアするぴょん
+        
+        // 3. コイントスの実行は handleCoinToss 関数に任せるぴょん
+        return; // コイントス処理に移行したら、これ以上 handleAttack は実行しないぴょん！
+    }
+
+    // コイントス不要なカード（トランプ型など）はそのまま殴るぴょん
+    executeNormalAttack(targetCard, attacker); // 通常攻撃ヘルパー関数を呼び出すぴょん
+};
+
+// 【新規追加】通常攻撃のロジックをまとめたヘルパー関数だぴょん！
+function executeNormalAttack(targetCard, attacker) {
     if (attacker.attachedPower < attacker.requiredPower) {
         addLog(getText('log_attack_fail_no_power'));
         return;
@@ -1497,18 +1511,7 @@ function handleAttack(targetCard) {
         return;
     }
 
-    // Handle special abilities
-    if (attacker.specialAbility === 'cointoss') {
-        console.log('Kari-Coin special ability (cointoss) triggered!'); // Added log
-        state.coinTossAttacker = attacker;
-        state.coinTossTarget = targetCard;
-        document.getElementById('status-text').textContent = '運命のコイントス！';
-        hideAttackMenu();
-        render(); // Re-render to show cointoss UI
-        return; // Divert from normal attack flow
-    }
-
-    // --- Kari-Heal: Cannot attack ---
+    // その他の特殊能力もここで処理するぴょん（コイントスはhandleAttackで処理済み）
     if (attacker.specialAbility === 'kari_heal') {
         addLog(`${attacker.rank}は攻撃できません！`);
         hideAttackMenu();
@@ -1518,7 +1521,7 @@ function handleAttack(targetCard) {
     }
 
     if (attacker.specialAbility === 'copy') {
-        attacker.value = targetCard.value; // Copy the target's attack value
+        attacker.value = targetCard.value;
         addLog(`【コピー】の能力で ${attacker.rank} の攻撃力が ${attacker.value} になった！`);
     }
 
@@ -1527,7 +1530,6 @@ function handleAttack(targetCard) {
         addLog(getFormattedText('log_abnormal_state_applied', { rank: targetCard.rank }));
     }
 
-    // --- Kari-Sleep: Apply sleep status to target ---
     if (attacker.specialAbility === 'kari_sleep') {
         targetCard.isSleeping = true;
         addLog(`${targetCard.rank}は眠ってしまった！`);
@@ -1537,7 +1539,6 @@ function handleAttack(targetCard) {
     targetCard.hp -= totalA;
     state.player.attackedIds.push(attacker.id);
     
-    // ダメージのログ（ここが大事！）
     addLog(getFormattedText('log_attack_damage', { targetRank: targetCard.rank, totalA: totalA }));
 
     if (targetCard.hp <= 0) {
@@ -1545,10 +1546,10 @@ function handleAttack(targetCard) {
         if (idx !== -1) {
             state.opponent.field[idx] = null;
             state.opponent.grave++;
-            state.player.points++; // プレイヤーのポイントを増やす
+            state.player.points++;
         }
         addLog(getFormattedText('log_target_destroyed', { rank: targetCard.rank }));
-        if (checkWin()) return; // ★★★ Check for win immediately ★★★
+        if (checkWin()) return;
     }
     
     state.selectedCard = null;
@@ -1940,17 +1941,25 @@ document.getElementById('menu-cancel-btn').onclick = () => {
 };
 
 function startRoulette() {
-    const overlay = document.getElementById('roulette-overlay'); overlay.style.display = 'flex';
+    showScreen('coin-flip-screen');
+    const title = document.getElementById('coin-flip-title');
+    const result = document.getElementById('cointoss-result');
+    const btn = document.getElementById('cointoss-btn');
+    
+    title.textContent = "先攻決定";
+    result.textContent = "";
+    btn.style.display = 'none';
+
     let count = 0;
     const interval = setInterval(() => {
-        overlay.textContent = count % 2 === 0 ? "プレイヤー先攻？" : "相手先攻？";
+        title.textContent = count % 2 === 0 ? "プレイヤー先攻？" : "相手先攻？";
         if (++count > 10) {
             clearInterval(interval);
             const isPlayer = Math.random() > 0.5;
             state.turn = isPlayer ? 'player' : 'opponent';
-            overlay.textContent = isPlayer ? "プレイヤー先攻" : "相手先攻";
+            title.textContent = isPlayer ? "プレイヤー先攻" : "相手先攻";
             setTimeout(() => {
-                overlay.style.display = 'none';
+                showScreen('game-screen');
                 // 先行・後攻に関わらず、まず相手の裏向き初期配置フェーズへ
                 state.isOpponentInitialPlacement = true; // 相手の特殊初期配置モードをON
                 state.canPlaceCard = false; // プレイヤーはまだ配置できない
