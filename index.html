@@ -333,6 +333,77 @@ function getInitialism(powerName) {
     return mapping[powerName] || powerName;
 }
 
+// 新規：状態異常をカードに適用する
+function applyStatusEffect(targetCard, effectName, duration) {
+    if (!targetCard) return;
+
+    // すでに同じ効果がかかっているか確認
+    const existingEffect = targetCard.statusEffects.find(e => e.name === effectName);
+    if (existingEffect) {
+        existingEffect.duration = Math.max(existingEffect.duration, duration); // 効果時間が長い方で上書き
+    } else {
+        targetCard.statusEffects.push({ name: effectName, duration: duration });
+    }
+    addLog(getFormattedText('log_status_applied', { effect: effectName, rank: targetCard.rank, duration: duration }));
+}
+
+// 新規：ターン終了時に状態異常をチェックする
+function stateCheck() {
+    addLog("▼ 状態チェック ▼");
+    const allCards = [...state.player.field, ...state.opponent.field].filter(c => c);
+
+    allCards.forEach(card => {
+        if (card.statusEffects.length === 0) return;
+
+        // 効果を適応し、期限切れをフィルタリング
+        const remainingEffects = [];
+        card.statusEffects.forEach(effect => {
+            let damage = 0;
+            if (effect.name === 'アシッド') {
+                damage = 1;
+            } else if (effect.name === 'イルネス') {
+                damage = 2;
+            }
+
+            if (damage > 0) {
+                card.hp -= damage;
+                addLog(getFormattedText('log_status_damage', { rank: card.rank, effect: effect.name, damage: damage }));
+            }
+
+            effect.duration--;
+
+            if (effect.duration > 0) {
+                remainingEffects.push(effect);
+            } else {
+                addLog(getFormattedText('log_status_ended', { rank: card.rank, effect: effect.name }));
+            }
+        });
+
+        card.statusEffects = remainingEffects;
+
+        // HPチェック
+        if (card.hp <= 0) {
+            if (state.player.field.includes(card)) {
+                const idx = state.player.field.indexOf(card);
+                state.player.field[idx] = null;
+                state.player.grave++;
+                state.opponent.points++;
+                addLog(getFormattedText('log_player_card_destroyed', { rank: card.rank }));
+            } else if (state.opponent.field.includes(card)) {
+                const idx = state.opponent.field.indexOf(card);
+                state.opponent.field[idx] = null;
+                state.opponent.grave++;
+                state.player.points++;
+                addLog(getFormattedText('log_target_destroyed', { rank: card.rank }));
+            }
+        }
+    });
+    addLog("▲ 状態チェック終了 ▲");
+    render(); // UIを更新
+    checkWin(); // 勝敗チェック
+}
+
+
 const languageData = {
     en: {
         'adventure_battle': 'ADVENTURE / BATTLE',
@@ -364,6 +435,9 @@ const languageData = {
         'lose_message': 'YOU LOSE...',
         'draw_message': 'DRAW',
         // Game Logs
+        'log_status_applied': '[${rank}] is now affected by [${effect}] for ${duration} turns!',
+        'log_status_damage': '[${rank}] takes ${damage} damage from [${effect}].',
+        'log_status_ended': 'The [${effect}] on [${rank}] has worn off.',
         'log_support_card_not_in_battle': 'Cannot use support cards now.',
         'log_use_2draw': 'Used [2DRAW]! Drew 2 cards!',
         'log_deck_empty': 'Deck is empty!',
@@ -451,6 +525,9 @@ const languageData = {
         'lose_message': 'あなたの敗北...',
         'draw_message': '引き分け',
         // Game Logs
+        'log_status_applied': '【${rank}】は[${effect}]状態になった (${duration}ターン)',
+        'log_status_damage': '【${rank}】は[${effect}]で ${damage} ダメージを受けた。',
+        'log_status_ended': '【${rank}】の[${effect}]状態が解除された。',
         'log_support_card_not_in_battle': 'サポートカードを使用できません。',
         'log_use_2draw': '【2DRAW】を使用！カードを2枚引いた。！',
         'log_deck_empty': '山札が空だ。！',
@@ -653,6 +730,7 @@ class Card {
         this.sizeName = null;
         this.powerName = null;
         this.raceName = null;
+        this.statusEffects = []; // <--- 状態異常を格納する配列
 
         // If it's a special card, its properties are defined entirely by the options.
         // Otherwise, calculate properties based on whether it's a generic monster or a regular trump card.
@@ -1014,6 +1092,30 @@ function createCardEl(card) {
     const div = document.createElement('div');
     div.className = `card ${card.suit || ''}`;
     div.dataset.cardId = card.id;
+
+    // --- 状態異常の表示 ---
+    if (card.statusEffects && card.statusEffects.length > 0) {
+        const statusContainer = document.createElement('div');
+        statusContainer.style.position = 'absolute';
+        statusContainer.style.top = '25px';
+        statusContainer.style.left = '2px';
+        statusContainer.style.display = 'flex';
+        statusContainer.style.flexDirection = 'column';
+        statusContainer.style.gap = '2px';
+        card.statusEffects.forEach(effect => {
+            const effectBadge = document.createElement('div');
+            effectBadge.style.background = 'rgba(200, 50, 50, 0.8)';
+            effectBadge.style.color = 'white';
+            effectBadge.style.fontSize = '0.5em';
+            effectBadge.style.padding = '1px 2px';
+            effectBadge.style.borderRadius = '3px';
+            effectBadge.style.fontWeight = 'bold';
+            const initial = getInitialism(effect.name) || effect.name.substring(0,2);
+            effectBadge.textContent = `${initial}${effect.duration}`;
+            statusContainer.appendChild(effectBadge);
+        });
+        div.appendChild(statusContainer);
+    }
 
     if (card.isFaceDown) {
         div.className = 'card back';
@@ -1520,14 +1622,18 @@ function executeNormalAttack(targetCard, attacker) {
         return;
     }
 
+    if (attacker.specialAbility === 'abnormal_state') {
+        const effectName = attacker.powerName; // e.g., 'アシッド'
+        applyStatusEffect(targetCard, effectName, 3); // Apply for 3 turns
+        state.player.attackedIds.push(attacker.id); // Mark as attacked
+        state.selectedCard = null;
+        render();
+        return; // Important: Stop execution here, no damage dealt
+    }
+
     if (attacker.specialAbility === 'copy') {
         attacker.value = targetCard.value;
         addLog(`【コピー】の能力で ${attacker.rank} の攻撃力が ${attacker.value} になった！`);
-    }
-
-    if (attacker.specialAbility === 'abnormal_state') {
-        targetCard.abnormalState = true;
-        addLog(getFormattedText('log_abnormal_state_applied', { rank: targetCard.rank }));
     }
 
     if (attacker.specialAbility === 'kari_sleep') {
@@ -1592,7 +1698,12 @@ function confirmPlacement() {
 
 function handleEndTurn() {
     state.player.powerInjected = false; state.player.attackedIds = [];
-    addLog(getText('log_turn_end')); 
+    addLog(getText('log_turn_end'));
+    
+    stateCheck(); // <-- ADDED
+
+    if (state.gameOver) return; // stateCheck might end the game
+
     addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
     state.turn = 'opponent'; document.getElementById('status-text').textContent = "相手ターン";
     rotateFields();
@@ -1737,6 +1848,9 @@ function opponentAI() {
     state.opponent.power = 5; // Restore opponent's power
     state.player.powerInjectedThisTurn = false; // Reset player's power injection flag
     
+    stateCheck(); // <-- ADDED
+    if (state.gameOver) return; // stateCheck might end the game
+
     addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
     rotateFields();
 
