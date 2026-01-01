@@ -1623,6 +1623,11 @@ function useSupportCard(card) {
             state.isBoosting = true; // Enter boosting mode
             cardUsed = true;
             break;
+        case 'LOOSEPOWER':
+            addLog(getText('log_use_loosepower'));
+            state.isLoosing = true; // Enter loosing mode
+            cardUsed = true;
+            break;
         case 'ATTACKUP':
             addLog(getText('log_use_attackup'));
             state.player.attackUpActive = true;
