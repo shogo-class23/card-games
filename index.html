@@ -496,6 +496,8 @@ const languageData = {
         'log_select_card_to_copy_attack_from': 'Select an opponent\'s front-line card to copy its attack.',
         'log_select_target_for_copied_attack': 'Select a target for the copied attack.',
         'log_copied_attack': 'Karikopi copied ${copiedRank}\'s attack!',
+        'log_kariheal_initiate': 'Kari-Heal activated! Select a friendly front-line card to fully heal.',
+        'log_kariheal_success': '[${rank}] fully healed by Kari-Heal!',
     },
     ja: {
         'adventure_battle': 'ADVENTURE / BATTLE',
@@ -589,6 +591,8 @@ const languageData = {
         'log_select_card_to_copy_attack_from': '攻撃をコピーする相手の前衛カードを選択してください。',
         'log_select_target_for_copied_attack': 'コピーした攻撃の対象を選択してください。',
         'log_copied_attack': 'カリコピーは${copiedRank}の攻撃をコピーした！',
+        'log_kariheal_initiate': 'カリヒールを使用！回復させる自分の前衛カードを選んでください。',
+        'log_kariheal_success': '【${rank}】がカリヒールで全回復した！',
     }
 };
 
@@ -1435,7 +1439,8 @@ function renderField(id, field, isOpponent) {
         const slot = document.createElement('div'); slot.className = 'card-slot'; slot.style.gridArea = `slot${i}`;
         if (card) {
             const cardEl = createCardEl(card);
-            const targetCardIndex = state.opponent.field.indexOf(card);
+            const targetCardIndex = state.opponent.field.indexOf(card); // For opponent cards
+            const friendlyCardIndex = state.player.field.indexOf(card); // For player cards
 
             // Highlight targetable opponent cards when isAttacking is true
             if (state.isAttacking && isOpponent && targetCardIndex < 3) {
@@ -1449,6 +1454,10 @@ function renderField(id, field, isOpponent) {
             if (state.isSelectingCopyTarget && isOpponent) {
                 cardEl.style.outline = '4px solid purple'; // Visual cue for copied attack target
             }
+            // NEW: Highlight friendly front-line cards for healing target selection
+            if (state.isHealingTargetSelection && !isOpponent && friendlyCardIndex !== -1 && friendlyCardIndex < 3) {
+                cardEl.style.outline = '4px solid lightgreen'; // Visual cue for heal target
+            }
 
             if (!isOpponent && state.player.attackedIds.includes(card.id)) cardEl.classList.add('attacked');
             if (state.selectedCard === card) cardEl.classList.add('selected');
@@ -1461,17 +1470,36 @@ function renderField(id, field, isOpponent) {
                         handleCopyAttackSelection(card);
                     } else if (state.isSelectingCopyTarget) {
                         handleCopiedAttack(card);
-                    } else if (state.isAttacking) { // Only attack if in attacking state
+                    }
+                     else if (state.isAttacking) { // Only attack if in attacking state
                         handleAttack(card);
                     } else {
                         addLog(getText('log_must_press_attack_button'));
                     }
-                    hideAttackMenu();
+                    hideAttackMenu(); // Hide menu after any opponent interaction
                 } else { // Player's own card clicked
-                    if (state.isHealing) {
+                    if (state.isHealing) { // Healing from a support card
                         healCard(card);
+                        return;
+                    }
+                    if (state.isHealingTargetSelection) { // Healing from Kari-Heal's ability
+                        handleHealTargetSelection(card, i); // Pass index if needed for field update
+                        return;
+                    }
+
+                    // If we are in attack mode and click another of our own cards, cancel the attack mode.
+                    if (state.isAttacking) {
+                        hideAttackMenu();
+                    }
+                    
+                    if (state.selectedCard === card) { // Deselect if already selected
+                        state.selectedCard = null;
+                        hideAttackMenu(); // Hide menu if deselected
                     } else {
-                        handleFieldClick(card, i);
+                        state.selectedCard = card;
+                        if (!state.gameOver && state.turn === 'player') { // Only show menu if player's turn and not game over
+                            showAttackMenu(card); // Show attack menu near the card
+                        }
                     }
                 }
             };
@@ -1525,8 +1553,13 @@ function handleFieldClick(card, i) {
         addLog(getFormattedText('log_card_returned_to_hand', { rank: card.rank }));
         hideAttackMenu(); // Hide menu if card is moved
     } else { // Battle phase
-        if (state.isHealing) { // If in healing mode, heal the card.
+        if (state.isHealing) { // If in healing mode (from support card), heal the card.
             healCard(card);
+            return;
+        }
+        // NEW: If selecting a target for Kari-Heal
+        if (state.isHealingTargetSelection) {
+            handleHealTargetSelection(card, i); // Pass index for field context
             return;
         }
 
@@ -1540,16 +1573,7 @@ function handleFieldClick(card, i) {
             hideAttackMenu(); // Hide menu if deselected
         } else {
             state.selectedCard = card;
-            if (state.selectedCard.specialAbility === 'kari_heal' && state.selectedCard.hp < state.selectedCard.maxHp) {
-                // If Kari-Heal is selected and not at full HP, trigger heal
-                state.selectedCard.hp = state.selectedCard.maxHp;
-                addLog(`${state.selectedCard.rank}がHPを全回復した！`);
-                state.selectedCard = null; // Deselect after healing
-                hideAttackMenu();
-                render();
-                return; // Stop further processing
-            }
-
+            // OLD KARI-HEAL LOGIC REMOVED FROM HERE
             if (!state.gameOver && state.turn === 'player') { // Only show menu if player's turn and not game over
                 showAttackMenu(card); // Show attack menu near the card
             }
@@ -1578,6 +1602,14 @@ function handleAttack(targetCard) {
     if (attackerIndex === -1 || attackerIndex > 2) {
         addLog(getText('log_cannot_attack_from_back_row'));
         return;
+    }
+
+    // NEW KARI-HEAL LOGIC
+    if (attacker.specialAbility === 'kari_heal') {
+        state.isHealingTargetSelection = true;
+        addLog(getText('log_kariheal_initiate'));
+        render(); // Render to highlight selectable friendly cards
+        return; // Stop further attack processing
     }
 
     if (attacker.specialAbility === 'copy') {
@@ -1647,6 +1679,27 @@ function handleCopiedAttack(targetCard) {
     state.isSelectingCopyTarget = false;
     state.copiedAttackProperties = null;
     state.selectedCard = null; // Deselect after attack
+    render();
+}
+
+function handleHealTargetSelection(targetCard, index) {
+    const healer = state.selectedCard; // This is Kari-Heal
+    if (!healer || !state.isHealingTargetSelection || !targetCard) return;
+
+    // Check if the target is a friendly front-line card
+    const friendlyCardIndex = state.player.field.indexOf(targetCard);
+    if (friendlyCardIndex === -1 || friendlyCardIndex > 2) {
+        addLog(getText('log_only_unit_can_be_healed')); // Reusing this log, but could add a new one
+        return;
+    }
+
+    targetCard.hp = targetCard.maxHp; // Fully heal
+    addLog(getFormattedText('log_kariheal_success', { rank: targetCard.rank }));
+
+    state.player.attackedIds.push(healer.id); // Mark Kari-Heal as "attacked" (used ability)
+    state.isHealingTargetSelection = false;
+    state.selectedCard = null;
+    hideAttackMenu();
     render();
 }
 
