@@ -551,6 +551,12 @@ const languageData = {
         'log_use_attackdown': 'Used [ATTACKDOWN]! Opponent\'s vanguard attack power -3 this turn!',
         'log_attack_up_applied': 'Your [${rank}] receives +3 Attack from ATTACKUP!',
         'log_attack_down_applied': 'Opponent\'s [${rank}] receives -3 Attack from ATTACKDOWN!',
+        'log_use_opponentcall': 'Used [OPPONENTCALL]! Select an opponent\'s back-row card to move to the front!',
+        'log_use_selfmove': 'Used [SELFMOVE]! Select your back-row card to move to the front!',
+        'log_front_row_full': 'Front row is full. Cannot use this card.',
+        'log_opponentcall_success': 'Opponent\'s [${rank}] moved to the front row!',
+        'log_selfmove_success': 'Your [${rank}] moved to the front row!',
+        'log_no_back_row_cards': 'No back-row cards to move.',
 
         'log_deck_empty': 'Deck is empty!',
         'log_use_heal': 'Used [HEAL]! Choose a card to heal!',
@@ -664,6 +670,12 @@ const languageData = {
         'log_use_attackdown': '【攻撃力減少】を使用！次ターン、相手の前衛モンスターの攻撃力-3！',
         'log_attack_up_applied': 'あなたの【${rank}】が攻撃力増加により攻撃力+3！',
         'log_attack_down_applied': '相手の【${rank}】が攻撃力減少により攻撃力-3！',
+        'log_use_opponentcall': '【相手呼び出し】を使用！相手の後衛モンスターを選んで前衛に移動させるぴょん！',
+        'log_use_selfmove': '【自分移動】を使用！自分の後衛モンスターを選んで前衛に移動させるぴょん！',
+        'log_front_row_full': '前衛がいっぱいなので、このカードは使えないぴょん。',
+        'log_opponentcall_success': '相手の【${rank}】を前衛に移動させたぴょん！',
+        'log_selfmove_success': '自分の【${rank}】を前衛に移動させたぴょん！',
+        'log_no_back_row_cards': '移動できる後衛カードがないぴょん。',
         'log_deck_empty': '山札が空だ。！',
         'log_use_heal': '【HEAL】を使用！回復させる自分のカードを選んでほしいぴょん！',
         'log_use_skip': '【SKIP】を使用！相手のターンをスキップする。！',
@@ -761,7 +773,7 @@ function toggleLanguage() {
 
 const SUITS = ['fire', 'water', 'wind', 'earth'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE','BOOSTPOWER','LOOSEPOWER','ATTACKUP','ATTACKDOWN'];
+const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE','BOOSTPOWER','LOOSEPOWER','ATTACKUP','ATTACKDOWN','OPPONENTCALL','SELFMOVE'];
 
 const RANK_VALUES = { 
     'A': 14, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
@@ -956,6 +968,8 @@ function getInitialState() {
         isHealingTargetSelection: false,
         isBoosting: false, // New state for Boost Power target selection
         isLoosing: false,  // New state for Loose Power target selection
+        isOpponentCalling: false, // New state for Opponent Call target selection
+        isSelfMoving: false, // New state for Self Move target selection
         sleepCheckQueue: [],
         isCheckingSleep: false,
         currentCoinTossHandler: null
@@ -1269,6 +1283,8 @@ function getSupportCardDisplayName(rank) {
         case 'SKIP': return 'SKIP';
         case 'ATTACKUP': return 'Atk Up';
         case 'ATTACKDOWN': return 'Atk Down';
+        case 'OPPONENTCALL': return 'Opp Call';
+        case 'SELFMOVE': return 'Self Move';
     }
 }
 
@@ -1617,6 +1633,38 @@ function useSupportCard(card) {
             state.opponent.attackDownActive = true;
             cardUsed = true;
             break;
+        case 'OPPONENTCALL':
+            // Check if opponent's front row is full
+            const oppFrontRowFull = state.opponent.field.slice(0, 3).every(slot => slot !== null);
+            if (oppFrontRowFull) {
+                addLog(getText('log_front_row_full'));
+                break;
+            }
+            const oppBackRowCards = state.opponent.field.slice(3, 6).filter(c => c !== null);
+            if (oppBackRowCards.length === 0) {
+                addLog(getText('log_no_back_row_cards'));
+                break;
+            }
+            addLog(getText('log_use_opponentcall'));
+            state.isOpponentCalling = true;
+            cardUsed = true;
+            break;
+        case 'SELFMOVE':
+            // Check if player's front row is full
+            const playerFrontRowFull = state.player.field.slice(0, 3).every(slot => slot !== null);
+            if (playerFrontRowFull) {
+                addLog(getText('log_front_row_full'));
+                break;
+            }
+            const playerBackRowCards = state.player.field.slice(3, 6).filter(c => c !== null);
+            if (playerBackRowCards.length === 0) {
+                addLog(getText('log_no_back_row_cards'));
+                break;
+            }
+            addLog(getText('log_use_selfmove'));
+            state.isSelfMoving = true;
+            cardUsed = true;
+            break;
     }
 
     if (cardUsed) {
@@ -1717,6 +1765,14 @@ function renderField(id, field, isOpponent) {
             if (state.isLoosing && isOpponent && targetCardIndex !== -1 && targetCardIndex < 3 && card.attachedPower > 0) {
                 cardEl.style.outline = '4px solid red';
             }
+            // NEW: Highlight opponent back-row cards for Opponent Call
+            if (state.isOpponentCalling && isOpponent && (i >= 3 && i <= 5) && card !== null) {
+                cardEl.style.outline = '4px solid orange';
+            }
+            // NEW: Highlight player back-row cards for Self Move
+            if (state.isSelfMoving && !isOpponent && (i >= 3 && i <= 5) && card !== null) {
+                cardEl.style.outline = '4px solid yellowgreen';
+            }
 
             if (!isOpponent && state.player.attackedIds.includes(card.id)) cardEl.classList.add('attacked');
             if (state.selectedCard === card) cardEl.classList.add('selected');
@@ -1731,6 +1787,9 @@ function renderField(id, field, isOpponent) {
                         handleCopiedAttack(card);
                     } else if (state.isLoosing) { // NEW: Handle Loose Power target selection
                         handleLooseTargetSelection(card, i);
+                    }
+                     else if (state.isOpponentCalling) { // Handle Opponent Call target selection
+                        handleOpponentCallSelection(card, i);
                     }
                      else if (state.isAttacking) { // Only attack if in attacking state
                         handleAttack(card);
@@ -1749,6 +1808,10 @@ function renderField(id, field, isOpponent) {
                     }
                     if (state.isBoosting) { // NEW: Handle Boost Power target selection
                         handleBoostTargetSelection(card, i);
+                        return;
+                    }
+                    if (state.isSelfMoving) { // Handle Self Move target selection
+                        handleSelfMoveSelection(card, i);
                         return;
                     }
 
@@ -2018,6 +2081,68 @@ function handleLooseTargetSelection(targetCard, index) {
     state.isLoosing = false; // Exit loosing mode
     state.selectedCard = null;
     hideAttackMenu();
+    render();
+}
+
+function handleOpponentCallSelection(targetCard, index) {
+    if (!targetCard || index < 3 || index > 5) { // Ensure it's a back-row card
+        addLog("無効な対象です。相手の後衛モンスターを選択してください。"); // Invalid target. Please select an opponent's back-row monster.
+        state.isOpponentCalling = false; // Exit mode on invalid selection
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
+    // Find the first empty slot in the opponent's front row
+    const emptyFrontRowSlotIndex = state.opponent.field.slice(0, 3).findIndex(slot => slot === null);
+    if (emptyFrontRowSlotIndex === -1) {
+        addLog(getText('log_front_row_full')); // This should ideally be caught before.
+        state.isOpponentCalling = false; // Exit mode
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
+    // Move the card
+    state.opponent.field[emptyFrontRowSlotIndex] = targetCard;
+    state.opponent.field[index] = null; // Clear the old position
+
+    addLog(getFormattedText('log_opponentcall_success', { rank: targetCard.rank }));
+
+    // Reset state
+    state.isOpponentCalling = false;
+    state.selectedCard = null;
+    render();
+}
+
+function handleSelfMoveSelection(targetCard, index) {
+    if (!targetCard || index < 3 || index > 5) { // Ensure it's a back-row card
+        addLog("無効な対象です。自分の後衛モンスターを選択してください。"); // Invalid target. Please select your back-row monster.
+        state.isSelfMoving = false; // Exit mode on invalid selection
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
+    // Find the first empty slot in the player's front row
+    const emptyFrontRowSlotIndex = state.player.field.slice(0, 3).findIndex(slot => slot === null);
+    if (emptyFrontRowSlotIndex === -1) {
+        addLog(getText('log_front_row_full')); // This should ideally be caught before.
+        state.isSelfMoving = false; // Exit mode
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
+    // Move the card
+    state.player.field[emptyFrontRowSlotIndex] = targetCard;
+    state.player.field[index] = null; // Clear the old position
+
+    addLog(getFormattedText('log_selfmove_success', { rank: targetCard.rank }));
+
+    // Reset state
+    state.isSelfMoving = false;
+    state.selectedCard = null;
     render();
 }
 
