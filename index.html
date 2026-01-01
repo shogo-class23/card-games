@@ -547,7 +547,10 @@ const languageData = {
         'log_use_loosepower': 'Used [LOOSEPOWER]! Choose an opponent\'s front-row monster to remove power!',
         'log_select_loose_target': 'Select an opponent\'s front-row monster to remove its power!',
         'log_loose_success': 'Removed 1 power from [${rank}]!',
-        'log_loose_min_power': '[${rank}] has no power to remove!',
+        'log_use_attackup': 'Used [ATTACKUP]! Your vanguard attack power +3 this turn!',
+        'log_use_attackdown': 'Used [ATTACKDOWN]! Opponent\'s vanguard attack power -3 this turn!',
+        'log_attack_up_applied': 'Your [${rank}] receives +3 Attack from ATTACKUP!',
+        'log_attack_down_applied': 'Opponent\'s [${rank}] receives -3 Attack from ATTACKDOWN!',
 
         'log_deck_empty': 'Deck is empty!',
         'log_use_heal': 'Used [HEAL]! Choose a card to heal!',
@@ -657,7 +660,10 @@ const languageData = {
         'log_use_loosepower': '【ルーズパワー】を使用！相手の前衛モンスターを選んでパワーを消してほしいぴょん！',
         'log_select_loose_target': 'パワーを消す相手の前衛モンスターを選択してください！',
         'log_loose_success': '【${rank}】のパワーを1消したぴょん！',
-        'log_loose_min_power': '【${rank}】には消せるパワーがないぴょん！',
+        'log_use_attackup': '【攻撃力増加】を使用！今ターン、あなたの前衛モンスターの攻撃力+3！',
+        'log_use_attackdown': '【攻撃力減少】を使用！次ターン、相手の前衛モンスターの攻撃力-3！',
+        'log_attack_up_applied': 'あなたの【${rank}】が攻撃力増加により攻撃力+3！',
+        'log_attack_down_applied': '相手の【${rank}】が攻撃力減少により攻撃力-3！',
         'log_deck_empty': '山札が空だ。！',
         'log_use_heal': '【HEAL】を使用！回復させる自分のカードを選んでほしいぴょん！',
         'log_use_skip': '【SKIP】を使用！相手のターンをスキップする。！',
@@ -755,7 +761,7 @@ function toggleLanguage() {
 
 const SUITS = ['fire', 'water', 'wind', 'earth'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE','BOOSTPOWER','LOOSEPOWER'];
+const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE','BOOSTPOWER','LOOSEPOWER','ATTACKUP','ATTACKDOWN'];
 
 const RANK_VALUES = { 
     'A': 14, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
@@ -932,8 +938,8 @@ function getInitialState() {
         language: 'ja',
         editIdx: 1, 
         editCards: [], 
-        player: { hand: [], field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0, attackedIds: [], usedSpecialAbilityIds: [], powerInjected: false },
-        opponent: { handCount: 5, field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0 },
+        player: { hand: [], field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0, attackedIds: [], usedSpecialAbilityIds: [], powerInjected: false, attackUpActive: false },
+        opponent: { handCount: 5, field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0, attackDownActive: false },
         selectedCard: null, 
         turn: 'player', 
         statusText: '準備OK',
@@ -1261,7 +1267,8 @@ function getSupportCardDisplayName(rank) {
         case '4DRAW': return '4DRAW';
         case 'HEAL': return 'HEAL';
         case 'SKIP': return 'SKIP';
-        default: return rank; // Fallback to full rank if no special display name
+        case 'ATTACKUP': return 'Atk Up';
+        case 'ATTACKDOWN': return 'Atk Down';
     }
 }
 
@@ -1600,9 +1607,14 @@ function useSupportCard(card) {
             state.isBoosting = true; // Enter boosting mode
             cardUsed = true;
             break;
-        case 'LOOSEPOWER':
-            addLog(getText('log_use_loosepower'));
-            state.isLoosing = true; // Enter loosing mode
+        case 'ATTACKUP':
+            addLog(getText('log_use_attackup'));
+            state.player.attackUpActive = true;
+            cardUsed = true;
+            break;
+        case 'ATTACKDOWN':
+            addLog(getText('log_use_attackdown'));
+            state.opponent.attackDownActive = true;
             cardUsed = true;
             break;
     }
@@ -2013,6 +2025,13 @@ function handleLooseTargetSelection(targetCard, index) {
 
 // 【新規追加】通常攻撃のロジックをまとめたヘルパー関数だぴょん！
 function executeNormalAttack(targetCard, attacker) {
+    if (state.player.attackUpActive) {
+        attacker.value += 3;
+        addLog(getFormattedText('log_attack_up_applied', { rank: attacker.rank }));
+        state.player.attackUpActive = false; // Reset after use
+    }
+    
+    // ... existing logic ...
     if (attacker.attachedPower < attacker.requiredPower) {
         addLog(getText('log_attack_fail_no_power'));
         return;
@@ -2219,6 +2238,11 @@ function opponentAI() {
             if (!oppCard || opponentAttackedIds.includes(oppCard.id)) { // 攻撃済み、または無効なカード
                 return;
             }
+            if (state.opponent.attackDownActive) {
+                oppCard.value = Math.max(0, oppCard.value - 3);
+                addLog(getFormattedText('log_attack_down_applied', { rank: oppCard.rank }));
+                state.opponent.attackDownActive = false; // Reset after use
+            }
             // --- Kari-Sleep: Prevent attacking when asleep ---
             if (oppCard.isSleeping) {
                 addLog(`${oppCard.rank}は眠っていて攻撃できない！`);
@@ -2231,7 +2255,7 @@ function opponentAI() {
             }
 
             if (oppCard.attachedPower >= oppCard.requiredPower) { // Check power requirement
-                const totalOppA = oppCard.value; // Now only uses card's value for attack
+            const totalOppA = oppCard.value; // Now only uses card's value for attack
                 const playerFrontRowCards = [state.player.field[0], state.player.field[1], state.player.field[2]].filter(p => p !== null);
 
                 if (playerFrontRowCards.length > 0) {
