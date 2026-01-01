@@ -919,7 +919,9 @@ function createCardUI(c, isPool) {
                 return;
             }
             // Preserve monsterName if it's a monster card
-            state.editCards.push(new Card(c.suit, c.rank, c.type, c.monsterName, { ...c })); 
+            const cardData = { ...c };
+            delete cardData.id; // Ensure a new ID is generated
+            state.editCards.push(new Card(c.suit, c.rank, c.type, c.monsterName, cardData)); 
         } else { 
             // This part is for removing cards from the deck, which is correct.
             // Find the specific card instance to remove.
