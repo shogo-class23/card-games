@@ -562,6 +562,7 @@ const languageData = {
         'log_no_player_units': 'No player unit cards on the field.',
         'log_no_opponent_units': 'No opponent unit cards on the field.',
         'log_no_player_front_row_units': 'No player unit cards in the front row.',
+        'log_support_limit_reached': 'Support card usage limit (2 per turn) reached.',
         'log_use_conditionheal': 'Used [CONDITIONHEAL]! Select a friendly card to remove status effects!',
         'log_conditionheal_success': '[${rank}]\'s status effects have been removed!',
         'log_no_status_effect_targets': 'No friendly cards with status effects to heal.',
@@ -693,6 +694,7 @@ const languageData = {
         'log_no_player_units': 'フィールドに味方のユニットカードがないぴょん。',
         'log_no_opponent_units': 'フィールドに相手のユニットカードがないぴょん。',
         'log_no_player_front_row_units': '前衛に味方のユニットカードがないぴょん。',
+        'log_support_limit_reached': 'サポートカードの使用上限（1ターン2枚）に達したぴょん。',
         'log_use_conditionheal': '【コンディションヒール】を使用！味方のカードを選んで状態異常を回復させるぴょん！',
         'log_conditionheal_success': '【${rank}】の状態異常が回復したぴょん！',
         'log_no_status_effect_targets': '状態異常にかかっている味方のカードがないぴょん。',
@@ -973,7 +975,7 @@ function getInitialState() {
         language: 'ja',
         editIdx: 1, 
         editCards: [], 
-        player: { hand: [], field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0, attackedIds: [], usedSpecialAbilityIds: [], powerInjected: false, attackUpActive: false },
+        player: { hand: [], field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0, attackedIds: [], usedSpecialAbilityIds: [], powerInjected: false, attackUpActive: false, supportCardsUsedThisTurn: 0 },
         opponent: { handCount: 5, field: Array(6).fill(null), deck: [], grave: 0, power: 5, points: 0, attackDownActive: false },
         selectedCard: null, 
         turn: 'player', 
@@ -1657,6 +1659,11 @@ function useSupportCard(card) {
         return;
     }
 
+    if (state.player.supportCardsUsedThisTurn >= 2) {
+        addLog(getText('log_support_limit_reached'));
+        return;
+    }
+
     let cardUsed = false;
     switch (card.rank) {
         case '2DRAW':
@@ -1799,6 +1806,7 @@ function useSupportCard(card) {
     }
 
     if (cardUsed) {
+        state.player.supportCardsUsedThisTurn++; // Increment counter
         // Remove card from hand and move to graveyard
         state.player.hand = state.player.hand.filter(c => c !== card);
         state.player.grave++;
@@ -2503,6 +2511,7 @@ function opponentAI() {
         } else {
             addLog(getText('log_player_deck_empty'));
         }
+        state.player.supportCardsUsedThisTurn = 0; // Reset counter for player's new turn
         state.turn = 'player';
         document.getElementById('status-text').textContent = "自ターン";
         addLog(getText('log_opponent_turn_end'));
@@ -2628,6 +2637,7 @@ function opponentAI() {
             addLog(getText('log_player_deck_empty'));
         }
 
+        state.player.supportCardsUsedThisTurn = 0; // Reset counter for player's new turn
         state.turn = 'player';
         document.getElementById('status-text').textContent = "自ターン";
         addLog(getText('log_opponent_turn_end'));
