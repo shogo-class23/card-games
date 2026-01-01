@@ -809,7 +809,8 @@ function getInitialState() {
         coinTossTarget: null,
         isCopyingAttack: false,
         isSelectingCopyTarget: false,
-        copiedAttackProperties: null
+        copiedAttackProperties: null,
+        isHealingTargetSelection: false
     };
 }
 
@@ -1040,7 +1041,7 @@ function initializeAndRenderCollection(shouldRender = true) {
         const kariheal = new Card('special', 'カリヒール', 'unit', 'カリヒール', {
             hp: 8,
             maxHp: 8,
-            value: 3, // Cannot attack
+            value: 0, // Cannot attack
             requiredPower: 2,
             powerName: 'ヒール', // Heal power
             specialAbility: 'kari_heal'
@@ -1458,7 +1459,10 @@ function renderField(id, field, isOpponent) {
             if (state.isSelectingCopyTarget && isOpponent) {
                 cardEl.style.outline = '4px solid purple'; // Visual cue for copied attack target
             }
-
+            // NEW: Highlight friendly front-line cards for healing target selection
+            if (state.isHealingTargetSelection && !isOpponent && friendlyCardIndex !== -1 && friendlyCardIndex < 3 && card.hp < card.maxHp) {
+                cardEl.style.outline = '4px solid lightgreen';
+            }
 
             if (!isOpponent && state.player.attackedIds.includes(card.id)) cardEl.classList.add('attacked');
             if (state.selectedCard === card) cardEl.classList.add('selected');
@@ -1481,6 +1485,10 @@ function renderField(id, field, isOpponent) {
                 } else { // Player's own card clicked
                     if (state.isHealing) { // Healing from a support card
                         healCard(card);
+                        return;
+                    }
+                    if (state.isHealingTargetSelection) { // Healing from Kari-Heal's ability
+                        handleHealTargetSelection(card, i); // Pass index if needed for field update
                         return;
                     }
 
@@ -1602,7 +1610,22 @@ function handleAttack(targetCard) {
     }
 
     // NEW KARI-HEAL LOGIC
-
+    if (attacker.specialAbility === 'kari_heal') {
+        const healableTargets = state.player.field.slice(0, 3).filter(c => c && c.hp < c.maxHp);
+        if (healableTargets.length === 0) {
+            addLog(getText('log_kariheal_no_targets'));
+            // Since the ability "fails", we should still mark Kari-Heal as having "attacked".
+            state.player.attackedIds.push(attacker.id);
+            state.selectedCard = null;
+            hideAttackMenu();
+            render();
+            return;
+        }
+        state.isHealingTargetSelection = true;
+        addLog(getText('log_kariheal_initiate'));
+        render();
+        return;
+    }
 
     if (attacker.specialAbility === 'copy') {
         state.isCopyingAttack = true;
@@ -1674,7 +1697,31 @@ function handleCopiedAttack(targetCard) {
     render();
 }
 
+function handleHealTargetSelection(targetCard, index) {
+    const healer = state.selectedCard; // This is Kari-Heal
+    if (!healer || !state.isHealingTargetSelection || !targetCard) return;
 
+    // Check if the target is a friendly front-line card
+    const friendlyCardIndex = state.player.field.indexOf(targetCard);
+    if (friendlyCardIndex === -1 || friendlyCardIndex > 2) {
+        addLog(getText('log_only_unit_can_be_healed')); // Reusing this log, but could add a new one
+        return;
+    }
+
+    if (targetCard.hp >= targetCard.maxHp) {
+        addLog(getText('log_kariheal_target_full_hp'));
+        return; // Don't heal a full-HP card
+    }
+
+    targetCard.hp = targetCard.maxHp; // Fully heal
+    addLog(getFormattedText('log_kariheal_success', { rank: targetCard.rank }));
+
+    state.player.attackedIds.push(healer.id); // Mark Kari-Heal as "attacked" (used ability)
+    state.isHealingTargetSelection = false;
+    state.selectedCard = null;
+    hideAttackMenu();
+    render();
+}
 
 // 【新規追加】通常攻撃のロジックをまとめたヘルパー関数だぴょん！
 function executeNormalAttack(targetCard, attacker) {
@@ -1697,6 +1744,14 @@ function executeNormalAttack(targetCard, attacker) {
     }
 
     // その他の特殊能力もここで処理するぴょん（コイントスはhandleAttackで処理済み）
+    if (attacker.specialAbility === 'kari_heal') {
+        addLog(`${attacker.rank}は攻撃できません！`);
+        hideAttackMenu();
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
     if (attacker.specialAbility === 'abnormal_state') {
         const effectName = attacker.powerName; // e.g., 'アシッド'
         applyStatusEffect(targetCard, effectName); // Apply for 3 turns
