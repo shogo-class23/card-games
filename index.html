@@ -537,6 +537,8 @@ const languageData = {
         'log_status_ended': 'The [${effect}] on [${rank}] has worn off.',
         'log_support_card_not_in_battle': 'Cannot use support cards now.',
         'log_use_2draw': 'Used [2DRAW]! Drew 2 cards!',
+        'log_use_3draw': 'Used [3DRAW]! Drew 3 cards!',
+        'log_use_4draw': 'Used [4DRAW]! Drew 4 cards!',
         'log_deck_empty': 'Deck is empty!',
         'log_use_heal': 'Used [HEAL]! Choose a card to heal!',
         'log_use_skip': 'Used [SKIP]! Skipping opponent\'s turn!',
@@ -635,6 +637,8 @@ const languageData = {
         'log_status_ended': '【${effect}】の[${rank}]状態が解除された。',
         'log_support_card_not_in_battle': 'サポートカードを使用できません。',
         'log_use_2draw': '【2DRAW】を使用！カードを2枚引いた。！',
+        'log_use_3draw': '【3DRAW】を使用！カードを3枚引いた。！',
+        'log_use_4draw': '【4DRAW】を使用！カードを4枚引いた。！',
         'log_deck_empty': '山札が空だ。！',
         'log_use_heal': '【HEAL】を使用！回復させる自分のカードを選んでほしいぴょん！',
         'log_use_skip': '【SKIP】を使用！相手のターンをスキップする。！',
@@ -732,11 +736,11 @@ function toggleLanguage() {
 
 const SUITS = ['fire', 'water', 'wind', 'earth'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const SUPPORTS = ['2DRAW','HEAL','SKIP'];
+const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW'];
 
 const RANK_VALUES = { 
     'A': 14, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
-    '2DRAW': 0, 'HEAL': 0, 'SKIP': 0 
+    '2DRAW': 0, 'HEAL': 0, 'SKIP': 0, '3DRAW': 0, '4DRAW': 0 
 };
 
 // Helper to extract power from monsterName (displayName)
@@ -1477,6 +1481,18 @@ function adjustFontSizeToFit(element, maxFontSizeEm = 0.8, minFontSizeEm = 0.6) 
         state.isAttacking = false; // Reset attacking state
     }
     
+// Helper function to draw cards
+function drawCards(count) {
+    for (let i = 0; i < count; i++) {
+        if (state.player.deck.length > 0) {
+            state.player.hand.push(state.player.deck.shift());
+        } else {
+            addLog(getText('log_deck_empty'));
+            break;
+        }
+    }
+}
+
 function useSupportCard(card) {
     if (state.gameOver || state.turn !== 'player') {
         addLog(getText('log_support_card_not_in_battle'));
@@ -1487,14 +1503,17 @@ function useSupportCard(card) {
     switch (card.rank) {
         case '2DRAW':
             addLog(getText('log_use_2draw'));
-            for (let i = 0; i < 2; i++) {
-                if (state.player.deck.length > 0) {
-                    state.player.hand.push(state.player.deck.shift());
-                } else {
-                    addLog(getText('log_deck_empty'));
-                    break;
-                }
-            }
+            drawCards(2);
+            cardUsed = true;
+            break;
+        case '3DRAW':
+            addLog(getText('log_use_3draw'));
+            drawCards(3);
+            cardUsed = true;
+            break;
+        case '4DRAW':
+            addLog(getText('log_use_4draw'));
+            drawCards(4);
             cardUsed = true;
             break;
         case 'HEAL':
