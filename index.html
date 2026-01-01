@@ -602,7 +602,7 @@ function getFormattedText(key, params = {}) {
     let text = getText(key);
     for (const p_key in params) {
         // Use a regular expression to replace all occurrences of the placeholder
-        const regex = new RegExp(`\$\{${p_key}\}`, 'g');
+        const regex = new RegExp('\\$\\{' + p_key + '\\}', 'g');
         text = text.replace(regex, params[p_key]);
     }
     return text;
