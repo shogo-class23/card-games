@@ -1149,7 +1149,7 @@ function initializeAndRenderCollection(shouldRender = true) {
         // Display regular cards first
         SUITS.forEach(s => {
             RANKS.forEach(r => fullCollection.push(new Card(s, r)));
-            SUPPORTS.forEach(a => fullCollection.push(new Card(s, a, 'support')));
+            SUPPORTS.forEach(a => fullCollection.push(new Card(s, a, 'support', null, { displayName: getSupportCardDisplayName(a) })));
         });
         // Add initial monster cards
         for (let i = 0; i < 20; i++) {
@@ -1250,6 +1250,21 @@ function addMonsterCardsToCollection() {
     filterCollection(); // Re-render the grid respecting the current filter
 }
 
+// Helper to get display name for support cards
+function getSupportCardDisplayName(rank) {
+    switch (rank) {
+        case 'BOOSTPOWER': return 'Boost P';
+        case 'LOOSEPOWER': return 'Loose P';
+        case 'HANDEXCHANGE': return 'Hand Ex';
+        case '2DRAW': return '2DRAW';
+        case '3DRAW': return '3DRAW';
+        case '4DRAW': return '4DRAW';
+        case 'HEAL': return 'HEAL';
+        case 'SKIP': return 'SKIP';
+        default: return rank; // Fallback to full rank if no special display name
+    }
+}
+
 
 function addLog(msg) {
     const log = document.getElementById('log-area');
@@ -1316,7 +1331,7 @@ function createCardEl(card) {
 
         div.innerHTML = `
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
-            <div style="font-size:0.42em; text-align:center; padding:3px; font-weight:bold; line-height:1.1; word-break:break-all;">${card.rank}</div>
+            <div style="font-size:0.42em; text-align:center; padding:3px; font-weight:bold; line-height:1.1; word-break:break-all;">${card.displayName}</div>
             <div class="symbol-container" style="position: absolute; top: calc(50% + 15px); left: 5px; transform: translateY(-50%); width: 25px; height: 25px;">
                 <div class="common-mark ${shapeClass}"></div>
                 <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.4em; font-weight:bold; color:white; text-shadow:1px 1px 1px black;">
@@ -1326,6 +1341,11 @@ function createCardEl(card) {
             <div style="position:absolute; bottom:3px; width:100%; text-align:center; font-size:0.5em; font-weight:bold; color:#333;">
                 P:${card.attachedPower}/${card.requiredPower} A:${card.value}
             </div>
+        `;
+    } else if (card.isSupport && !card.specialAbility) { // NEW: Dedicated display for generic support cards (without special ability)
+        div.innerHTML = `
+            <div style="font-size:0.9em; text-align:center; padding:3px; font-weight:bold;">${card.displayName}</div>
+            <div style="font-size:0.8em; text-align:center; padding-left:3px;">${card.suit}</div>
         `;
     } else if (card.isTripleType) { // Changed condition to isTripleType
         // --- 1. 属性（パワー名）から「形」を決める魔法の辞書だぴょん！ ---
@@ -1425,10 +1445,11 @@ function createCardEl(card) {
             <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower} A:${card.value}</div>
         `;
     } else {
-        // 【普通のトランプ】今まで通りの表示
+        // 【普通のトランプ】または特殊能力を持たないサポートカードの表示
+        const displayText = card.isSupport ? card.displayName : card.rank;
         div.innerHTML = `
             <div class="hp-badge">${card.hp}/${card.maxHp}</div>
-            <div style="font-size:1.2em; text-align:left; padding:3px; font-weight:bold;">${card.rank}</div>
+            <div style="font-size:1.2em; text-align:left; padding:3px; font-weight:bold;">${displayText}</div>
             <div style="font-size:0.8em; text-align:left; padding-left:3px;">${card.suit}</div>
             <div style="font-size:0.9em; text-align:left; padding-left:3px;">P:${card.attachedPower}/${card.requiredPower} A:${card.value}</div>
         `;
