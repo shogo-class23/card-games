@@ -540,6 +540,15 @@ const languageData = {
         'log_use_3draw': 'Used [3DRAW]! Drew 3 cards!',
         'log_use_4draw': 'Used [4DRAW]! Drew 4 cards!',
         'log_use_handexchange': 'Used [HANDEXCHANGE]! Exchanged hand with deck!',
+        'log_use_boostpower': 'Used [BOOSTPOWER]! Choose a friendly front-row monster to boost!',
+        'log_select_boost_target': 'Select a friendly front-row monster to boost its power!',
+        'log_boost_success': 'Boosted [${rank}]! (+1 Power)',
+        'log_boost_max_power': '[${rank}] is already at max power!',
+        'log_use_loosepower': 'Used [LOOSEPOWER]! Choose an opponent\'s front-row monster to remove power!',
+        'log_select_loose_target': 'Select an opponent\'s front-row monster to remove its power!',
+        'log_loose_success': 'Removed 1 power from [${rank}]!',
+        'log_loose_min_power': '[${rank}] has no power to remove!',
+
         'log_deck_empty': 'Deck is empty!',
         'log_use_heal': 'Used [HEAL]! Choose a card to heal!',
         'log_use_skip': 'Used [SKIP]! Skipping opponent\'s turn!',
@@ -641,6 +650,14 @@ const languageData = {
         'log_use_3draw': '【3DRAW】を使用！カードを3枚引いた。！',
         'log_use_4draw': '【4DRAW】を使用！カードを4枚引いた。！',
         'log_use_handexchange': '【手札入れ替え】を使用！手札を全て山札に戻し、引き直した。！',
+        'log_use_boostpower': '【ブーストパワー】を使用！自分の前衛モンスターを選んでパワーを付与してほしいぴょん！',
+        'log_select_boost_target': 'パワーをブーストする自分の前衛モンスターを選択してください！',
+        'log_boost_success': '【${rank}】にパワーを1付与したぴょん！',
+        'log_boost_max_power': '【${rank}】はすでに最大パワーだぴょん！',
+        'log_use_loosepower': '【ルーズパワー】を使用！相手の前衛モンスターを選んでパワーを消してほしいぴょん！',
+        'log_select_loose_target': 'パワーを消す相手の前衛モンスターを選択してください！',
+        'log_loose_success': '【${rank}】のパワーを1消したぴょん！',
+        'log_loose_min_power': '【${rank}】には消せるパワーがないぴょん！',
         'log_deck_empty': '山札が空だ。！',
         'log_use_heal': '【HEAL】を使用！回復させる自分のカードを選んでほしいぴょん！',
         'log_use_skip': '【SKIP】を使用！相手のターンをスキップする。！',
@@ -738,11 +755,11 @@ function toggleLanguage() {
 
 const SUITS = ['fire', 'water', 'wind', 'earth'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE'];
+const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE','BOOSTPOWER','LOOSEPOWER'];
 
 const RANK_VALUES = { 
     'A': 14, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
-    '2DRAW': 0, 'HEAL': 0, 'SKIP': 0, '3DRAW': 0, '4DRAW': 0, 'HANDEXCHANGE': 0 
+    '2DRAW': 0, 'HEAL': 0, 'SKIP': 0, '3DRAW': 0, '4DRAW': 0, 'HANDEXCHANGE': 0, 'BOOSTPOWER': 0, 'LOOSEPOWER': 0 
 };
 
 // Helper to extract power from monsterName (displayName)
@@ -931,6 +948,8 @@ function getInitialState() {
         isSelectingCopyTarget: false,
         copiedAttackProperties: null,
         isHealingTargetSelection: false,
+        isBoosting: false, // New state for Boost Power target selection
+        isLoosing: false,  // New state for Loose Power target selection
         sleepCheckQueue: [],
         isCheckingSleep: false,
         currentCoinTossHandler: null
@@ -1555,6 +1574,16 @@ function useSupportCard(card) {
             
             cardUsed = true;
             break;
+        case 'BOOSTPOWER':
+            addLog(getText('log_use_boostpower'));
+            state.isBoosting = true; // Enter boosting mode
+            cardUsed = true;
+            break;
+        case 'LOOSEPOWER':
+            addLog(getText('log_use_loosepower'));
+            state.isLoosing = true; // Enter loosing mode
+            cardUsed = true;
+            break;
     }
 
     if (cardUsed) {
@@ -1643,9 +1672,17 @@ function renderField(id, field, isOpponent) {
             if (state.isSelectingCopyTarget && isOpponent) {
                 cardEl.style.outline = '4px solid purple'; // Visual cue for copied attack target
             }
-            // NEW: Highlight friendly front-line cards for healing target selection
+            // Highlight friendly front-line cards for healing target selection
             if (state.isHealingTargetSelection && !isOpponent && friendlyCardIndex !== -1 && friendlyCardIndex < 3 && card.hp < card.maxHp) {
                 cardEl.style.outline = '4px solid lightgreen';
+            }
+            // NEW: Highlight friendly front-line cards for boosting
+            if (state.isBoosting && !isOpponent && friendlyCardIndex !== -1 && friendlyCardIndex < 3 && card.attachedPower < card.requiredPower) {
+                cardEl.style.outline = '4px solid gold';
+            }
+            // NEW: Highlight opponent front-line cards for loosing
+            if (state.isLoosing && isOpponent && targetCardIndex !== -1 && targetCardIndex < 3 && card.attachedPower > 0) {
+                cardEl.style.outline = '4px solid red';
             }
 
             if (!isOpponent && state.player.attackedIds.includes(card.id)) cardEl.classList.add('attacked');
@@ -1659,6 +1696,8 @@ function renderField(id, field, isOpponent) {
                         handleCopyAttackSelection(card);
                     } else if (state.isSelectingCopyTarget) {
                         handleCopiedAttack(card);
+                    } else if (state.isLoosing) { // NEW: Handle Loose Power target selection
+                        handleLooseTargetSelection(card, i);
                     }
                      else if (state.isAttacking) { // Only attack if in attacking state
                         handleAttack(card);
@@ -1673,6 +1712,10 @@ function renderField(id, field, isOpponent) {
                     }
                     if (state.isHealingTargetSelection) { // Healing from Kari-Heal's ability
                         handleHealTargetSelection(card, i); // Pass index if needed for field update
+                        return;
+                    }
+                    if (state.isBoosting) { // NEW: Handle Boost Power target selection
+                        handleBoostTargetSelection(card, i);
                         return;
                     }
 
@@ -1749,6 +1792,11 @@ function handleFieldClick(card, i) {
         // NEW: If selecting a target for Kari-Heal
         if (state.isHealingTargetSelection) {
             handleHealTargetSelection(card, i); // Pass index for field context
+            return;
+        }
+        // NEW: If selecting a target for Boost Power
+        if (state.isBoosting) {
+            handleBoostTargetSelection(card, i);
             return;
         }
 
@@ -1885,6 +1933,56 @@ function handleHealTargetSelection(targetCard, index) {
 
     state.player.usedSpecialAbilityIds.push(healer.id); // Mark Kari-Heal as having used its special ability
     state.isHealingTargetSelection = false;
+    state.selectedCard = null;
+    hideAttackMenu();
+    render();
+}
+
+// NEW: Handle selection for Boost Power
+function handleBoostTargetSelection(targetCard, index) {
+    if (!targetCard) return;
+
+    // Check if target is a friendly front-row card
+    const friendlyCardIndex = state.player.field.indexOf(targetCard);
+    if (friendlyCardIndex === -1 || friendlyCardIndex > 2) {
+        addLog(getText('log_select_boost_target')); // Prompt user to select a valid target
+        return;
+    }
+
+    if (targetCard.attachedPower >= targetCard.requiredPower) {
+        addLog(getFormattedText('log_boost_max_power', { rank: targetCard.rank }));
+        return;
+    }
+
+    targetCard.attachedPower++;
+    addLog(getFormattedText('log_boost_success', { rank: targetCard.rank }));
+
+    state.isBoosting = false; // Exit boosting mode
+    state.selectedCard = null;
+    hideAttackMenu();
+    render();
+}
+
+// NEW: Handle selection for Loose Power
+function handleLooseTargetSelection(targetCard, index) {
+    if (!targetCard) return;
+
+    // Check if target is an opponent front-row card
+    const opponentCardIndex = state.opponent.field.indexOf(targetCard);
+    if (opponentCardIndex === -1 || opponentCardIndex > 2) {
+        addLog(getText('log_select_loose_target')); // Prompt user to select a valid target
+        return;
+    }
+
+    if (targetCard.attachedPower <= 0) {
+        addLog(getFormattedText('log_loose_min_power', { rank: targetCard.rank }));
+        return;
+    }
+
+    targetCard.attachedPower--;
+    addLog(getFormattedText('log_loose_success', { rank: targetCard.rank }));
+
+    state.isLoosing = false; // Exit loosing mode
     state.selectedCard = null;
     hideAttackMenu();
     render();
