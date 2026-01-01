@@ -563,6 +563,10 @@ const languageData = {
         'log_no_player_units': 'No player unit cards on the field.',
         'log_no_opponent_units': 'No opponent unit cards on the field.',
         'log_no_player_front_row_units': 'No player unit cards in the front row.',
+        'log_use_conditionheal': 'Used [CONDITIONHEAL]! Select a friendly card to remove status effects!',
+        'log_conditionheal_success': '[${rank}]\'s status effects have been removed!',
+        'log_no_status_effect_targets': 'No friendly cards with status effects to heal.',
+        'log_kariijyou_abnormal_state': '[${oppCardRank}] applied an Acid status to [${targetCardRank}]!',
 
         'log_deck_empty': 'Deck is empty!',
         'log_use_heal': 'Used [HEAL]! Choose a card to heal!',
@@ -688,6 +692,10 @@ const languageData = {
         'log_no_player_units': 'フィールドに味方のユニットカードがないぴょん。',
         'log_no_opponent_units': 'フィールドに相手のユニットカードがないぴょん。',
         'log_no_player_front_row_units': '前衛に味方のユニットカードがないぴょん。',
+        'log_use_conditionheal': '【コンディションヒール】を使用！味方のカードを選んで状態異常を回復させるぴょん！',
+        'log_conditionheal_success': '【${rank}】の状態異常が回復したぴょん！',
+        'log_no_status_effect_targets': '状態異常にかかっている味方のカードがないぴょん。',
+        'log_kariijyou_abnormal_state': '相手の【${oppCardRank}】が【${targetCardRank}】にアシッド状態を付与した！',
         'log_deck_empty': '山札が空だ。！',
         'log_use_heal': '【HEAL】を使用！回復させる自分のカードを選んでほしいぴょん！',
         'log_use_skip': '【SKIP】を使用！相手のターンをスキップする。！',
@@ -785,7 +793,7 @@ function toggleLanguage() {
 
 const SUITS = ['fire', 'water', 'wind', 'earth'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE','BOOSTPOWER','LOOSEPOWER','ATTACKUP','ATTACKDOWN','OPPONENTCALL','SELFMOVE'];
+const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE','BOOSTPOWER','LOOSEPOWER','ATTACKUP','ATTACKDOWN','OPPONENTCALL','SELFMOVE','CONDITIONHEAL'];
 
 const RANK_VALUES = { 
     'A': 14, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
@@ -982,6 +990,7 @@ function getInitialState() {
         isLoosing: false,  // New state for Loose Power target selection
         isOpponentCalling: false, // New state for Opponent Call target selection
         isSelfMoving: false, // New state for Self Move target selection
+        isConditionHealing: false, // New state for Condition Heal target selection
         sleepCheckQueue: [],
         isCheckingSleep: false,
         currentCoinTossHandler: null
@@ -1297,6 +1306,7 @@ function getSupportCardDisplayName(rank) {
         case 'ATTACKDOWN': return 'Atk Down';
         case 'OPPONENTCALL': return 'Opp Call';
         case 'SELFMOVE': return 'Self Move';
+        case 'CONDITIONHEAL': return 'Cond Heal';
     }
 }
 
@@ -1712,6 +1722,17 @@ function useSupportCard(card) {
             state.isSelfMoving = true;
             cardUsed = true;
             break;
+        case 'CONDITIONHEAL':
+            // Check if there are any friendly unit cards with status effects
+            const cardsWithStatusEffects = state.player.field.filter(c => c && c.statusEffects && c.statusEffects.length > 0);
+            if (cardsWithStatusEffects.length === 0) {
+                addLog(getText('log_no_status_effect_targets'));
+                break;
+            }
+            addLog(getText('log_use_conditionheal'));
+            state.isConditionHealing = true;
+            cardUsed = true;
+            break;
     }
 
     if (cardUsed) {
@@ -1820,6 +1841,10 @@ function renderField(id, field, isOpponent) {
             if (state.isSelfMoving && !isOpponent && (i >= 3 && i <= 5) && card !== null) {
                 cardEl.style.outline = '4px solid yellowgreen';
             }
+            // NEW: Highlight player cards with status effects for Condition Heal
+            if (state.isConditionHealing && !isOpponent && card && card.statusEffects && card.statusEffects.length > 0) {
+                cardEl.style.outline = '4px solid #00FFFF'; // Cyan color
+            }
 
             if (!isOpponent && state.player.attackedIds.includes(card.id)) cardEl.classList.add('attacked');
             if (state.selectedCard === card) cardEl.classList.add('selected');
@@ -1859,6 +1884,10 @@ function renderField(id, field, isOpponent) {
                     }
                     if (state.isSelfMoving) { // Handle Self Move target selection
                         handleSelfMoveSelection(card, i);
+                        return;
+                    }
+                    if (state.isConditionHealing) { // Handle Condition Heal target selection
+                        handleConditionHealSelection(card);
                         return;
                     }
 
@@ -2002,16 +2031,10 @@ function handleAttack(targetCard) {
     
     addLog(getFormattedText('log_attack_start', { rank: attacker.rank }));
 
-    if (attacker.specialAbility === 'cointoss') {
-        state.coinTossAttacker = attacker;
-        state.coinTossTarget = targetCard; 
-        state.currentCoinTossHandler = handleKarikoinCoinToss; // Set the specific handler
-        showScreen('coin-flip-screen');
-        const title = document.getElementById('coin-flip-title');
-        title.textContent = "カリコイン・アタック！";
-        document.getElementById('cointoss-btn').style.display = 'inline-block';
-        document.getElementById('cointoss-result').textContent = '';
-        return;
+    // Execute special ability if it exists and replaces normal attack
+    const specialAbilityHandled = executeSpecialAbilityAction(attacker, targetCard, 'player');
+    if (specialAbilityHandled) {
+        return; // Special ability replaced normal attack
     }
 
     executeNormalAttack(targetCard, attacker);
@@ -2192,6 +2215,74 @@ function handleSelfMoveSelection(targetCard, index) {
     state.selectedCard = null;
     render();
 }
+
+function handleConditionHealSelection(targetCard) {
+    // Validate target: must be a player's card with status effects
+    if (!targetCard || !targetCard.statusEffects || targetCard.statusEffects.length === 0) {
+        addLog("無効な対象です。状態異常にかかっている味方のカードを選択してください。"); // Invalid target. Please select a friendly card with status effects.
+        state.isConditionHealing = false; // Exit mode on invalid selection
+        state.selectedCard = null;
+        render();
+        return;
+    }
+
+    targetCard.statusEffects = []; // Clear all status effects
+    targetCard.isSleeping = false; // Also clear sleep status if it's a status effect (assuming sleep is a status effect)
+
+    addLog(getFormattedText('log_conditionheal_success', { rank: targetCard.rank }));
+
+    // Reset state
+    state.isConditionHealing = false;
+    state.selectedCard = null;
+    render();
+}
+
+/**
+ * Executes the special ability of an attacking card.
+ * This function is designed to be called instead of normal damage dealing if the card has a special ability
+ * that replaces its attack.
+ * @param {Card} attacker The card performing the special ability.
+ * @param {Card} targetCard The target of the special ability.
+ * @param {'player'|'opponent'} playerType The type of player controlling the attacker.
+ * @returns {boolean} True if a special ability was handled and replaced the normal attack, false otherwise.
+ */
+function executeSpecialAbilityAction(attacker, targetCard, playerType) {
+    if (!attacker || !attacker.specialAbility || !targetCard) {
+        return false;
+    }
+
+    let abilityHandled = false;
+
+    switch (attacker.specialAbility) {
+        case 'abnormal_state': // カリイジョウ: Applies Acid status
+            applyStatusEffect(targetCard, 'アシッド');
+            addLog(getFormattedText('log_kariijyou_abnormal_state', { oppCardRank: attacker.rank, targetCardRank: targetCard.rank }));
+            abilityHandled = true;
+            break;
+        case 'kari_sleep': // カリスリープ: Applies Sleep status
+            applyStatusEffect(targetCard, 'スリープ'); // Assuming 'スリープ' is a recognized status effect
+            targetCard.isSleeping = true; // Also set the flag
+            addLog(`カリスリープが${targetCard.rank}を眠らせた！`);
+            abilityHandled = true;
+            break;
+        // Add other special abilities here that replace normal attacks
+        case 'cointoss': // For Karikoin: Initiates a coin toss
+            state.coinTossAttacker = attacker;
+            state.coinTossTarget = targetCard; 
+            state.currentCoinTossHandler = handleKarikoinCoinToss; // Set the specific handler
+            showScreen('coin-flip-screen');
+            const title = document.getElementById('coin-flip-title');
+            title.textContent = "カリコイン・アタック！";
+            document.getElementById('cointoss-btn').style.display = 'inline-block';
+            document.getElementById('cointoss-result').textContent = '';
+            abilityHandled = true;
+            break;
+        // case 'copy': // For Karikopi, this also involves selection
+    }
+
+    return abilityHandled;
+}
+
 
 
 
@@ -2430,8 +2521,13 @@ function opponentAI() {
                 if (playerFrontRowCards.length > 0) {
                     // Attack player's first available front row card
                     const targetCard = playerFrontRowCards[0];
-                    targetCard.hp -= totalOppA;
-                    addLog(getFormattedText('log_opponent_attack', { oppCardRank: oppCard.rank, targetCardRank: targetCard.rank, totalOppA: totalOppA }));
+                    let specialAbilityHandled = executeSpecialAbilityAction(oppCard, targetCard, 'opponent');
+
+                    if (!specialAbilityHandled) { // Only deal damage if special ability wasn't handled
+                        targetCard.hp -= totalOppA;
+                        addLog(getFormattedText('log_opponent_attack', { oppCardRank: oppCard.rank, targetCardRank: targetCard.rank, totalOppA: totalOppA }));
+                    }
+                    
                     opponentAttackedIds.push(oppCard.id); // 攻撃済みとして登録
                     if (targetCard.hp <= 0) {
                         const idx = state.player.field.indexOf(targetCard);
@@ -2606,18 +2702,43 @@ function startGameWithDeck(deckId) {
         addLog(getText('log_player_mulligan_warning'));
     }
 
-    // 2. Opponent's deck setup (Random)
-    let opponentFullDeck = [];
-    SUITS.forEach(suit => {
-        RANKS.forEach(rank => opponentFullDeck.push(new Card(suit, rank)));
-        SUPPORTS.forEach(a => opponentFullDeck.push(new Card(suit, a, 'support')));
-    });
-     for (let i = opponentFullDeck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [opponentFullDeck[i], opponentFullDeck[j]] = [opponentFullDeck[j], opponentFullDeck[i]];
+    // 2. Opponent's deck setup (Custom)
+    let opponentDeck = [];
+
+    // Add two Kari-Ijyou cards
+    for (let i = 0; i < 2; i++) {
+        opponentDeck.push(new Card('special', 'カリイジョウ', 'unit', 'カリイジョウ', { 
+            hp: 5, maxHp: 5, value: 5, requiredPower: 2, powerName: 'アシッド', specialAbility: 'abnormal_state' 
+        }));
     }
-    state.opponent.deck = opponentFullDeck.slice(0, 30); // Take 30 cards for the deck
-    state.opponent.hand = state.opponent.deck.splice(0, 5); // 初期手札5枚
+
+    // Add three 4DRAW cards
+    for (let i = 0; i < 3; i++) {
+        opponentDeck.push(new Card('special', '4DRAW', 'support', null, { 
+            displayName: getSupportCardDisplayName('4DRAW') 
+        }));
+    }
+
+    // Fill the rest of the deck with random cards up to 30
+    while (opponentDeck.length < 30) {
+        // Randomly choose between a unit card or a support card (excluding specific ones already added)
+        const randomType = Math.random();
+        if (randomType < 0.7) { // 70% chance for unit card
+            opponentDeck.push(generateRandomMonsterCard());
+        } else { // 30% chance for support card (excluding 4DRAW)
+            // Get all supports except 4DRAW
+            const otherSupports = SUPPORTS.filter(s => s !== '4DRAW');
+            const randomSupportRank = getRandomElement(otherSupports);
+            opponentDeck.push(new Card('special', randomSupportRank, 'support', null, { 
+                displayName: getSupportCardDisplayName(randomSupportRank) 
+            }));
+        }
+    }
+
+    // Shuffle opponent's custom deck
+    shuffleArray(opponentDeck);
+    
+    state.opponent.deck = opponentDeck;    state.opponent.hand = state.opponent.deck.splice(0, 5); // 初期手札5枚
 
     // マリガン処理 (相手)
     let opponentMulliganCount = 0;
