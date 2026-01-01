@@ -143,8 +143,8 @@
         <div style="flex:1; display:flex; flex-direction:column;">
             <h3 data-lang-key="card_pool">CARD POOL</h3>
             <div style="margin-bottom: 10px; display:flex; gap: 5px; align-items:center;">
-                <input type="text" id="editor-name-search-input" placeholder="名称..." style="padding: 6px; font-size: 0.9em; width: 120px;">
-                <input type="text" id="editor-power-search-input" placeholder="パワー名..." style="padding: 6px; font-size: 0.9em; width: 120px;">
+                <input type="text" id="editor-name-search-input" placeholder="モンスター名..." style="padding: 6px; font-size: 0.9em; width: 120px;">
+                <input type="text" id="editor-power-search-input" placeholder="パワー名（サポート含む）..." style="padding: 6px; font-size: 0.9em; width: 120px;">
                 <button class="game-button" style="padding: 6px 10px;" onclick="filterEditorPool()">検索</button>
             </div>
             <div id="pool-grid" class="scroll-grid"></div>
@@ -176,9 +176,8 @@
 <div id="collection-screen" class="screen">
     <h2 data-lang-key="collection">COLLECTION</h2>
     <div style="margin-bottom: 15px; display:flex; gap: 10px; align-items:center;">
-        <input type="text" id="name-search-input" placeholder="名称で検索..." style="padding: 8px; font-size: 1em; width: 200px;">
-        <input type="text" id="power-search-input" placeholder="パワー名で検索..." style="padding: 8px; font-size: 1em; width: 200px;">
-        <button class="game-button" onclick="filterCollection()">検索</button>
+        <input type="text" id="name-search-input" placeholder="モンスター名で検索..." style="padding: 8px; font-size: 1em; width: 200px;">
+        <input type="text" id="power-search-input" placeholder="パワー名（サポート含む）で検索..." style="padding: 8px; font-size: 1em; width: 200px;">        <button class="game-button" onclick="filterCollection()">検索</button>
     </div>
     <button class="game-button" onclick="addMonsterCardsToCollection()">さらにモンスターカードを生成</button>
     <div id="coll-grid" class="grid-container" style="grid-template-columns: repeat(7, 1fr);"></div>
@@ -1251,8 +1250,9 @@ function initializeAndRenderCollection(shouldRender = true) {
         // Display regular cards first
         SUITS.forEach(s => {
             RANKS.forEach(r => fullCollection.push(new Card(s, r)));
-            SUPPORTS.forEach(a => fullCollection.push(new Card(s, a, 'support', null, { displayName: getSupportCardDisplayName(a) })));
         });
+        // Add support cards once, without a specific suit
+        SUPPORTS.forEach(a => fullCollection.push(new Card(null, a, 'support', null, { displayName: getSupportCardDisplayName(a), powerName: 'サポート' })));
         // Add initial monster cards
         for (let i = 0; i < 20; i++) {
             fullCollection.push(generateRandomMonsterCard());
@@ -1448,12 +1448,14 @@ function createCardEl(card) {
                 P:${card.attachedPower}/${card.requiredPower} A:${card.value}
             </div>
         `;
-    } else if (card.isSupport && !card.specialAbility) { // NEW: Dedicated display for generic support cards (without special ability)
-        div.innerHTML = `
-            <div style="font-size:0.9em; text-align:center; padding:3px; font-weight:bold;">${card.displayName}</div>
-            <div style="font-size:0.8em; text-align:center; padding-left:3px;">${card.suit}</div>
-        `;
-    } else if (card.isTripleType) { // Changed condition to isTripleType
+        } else if (card.isSupport && !card.specialAbility) { // NEW: Dedicated display for generic support cards (without special ability)
+            div.classList.add(getThematicColorClass(getThematicSuitLabel(card))); // Apply background color
+            div.innerHTML = `
+                <div style="font-size:0.9em; text-align:center; padding:3px; font-weight:bold;">${card.displayName}</div>
+                <div style="font-size:0.8em; text-align:center; padding-left:3px;">${card.powerName || ''}</div> <!-- Display powerName 'サポート' -->
+            `;
+        }
+     else if (card.isTripleType) { // Changed condition to isTripleType
         // --- 1. 属性（パワー名）から「形」を決める魔法の辞書だぴょん！ ---
         const p = card.powerName;
         let shapeClass = "square-mark"; // その他は四角
