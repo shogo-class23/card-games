@@ -498,6 +498,8 @@ const languageData = {
         'log_copied_attack': 'Karikopi copied ${copiedRank}\'s attack!',
         'log_kariheal_initiate': 'Kari-Heal activated! Select a friendly front-line card to fully heal.',
         'log_kariheal_success': '[${rank}] fully healed by Kari-Heal!',
+        'log_kariheal_no_targets': 'There are no damaged friendly front-line monsters to heal.',
+        'log_kariheal_target_full_hp': 'This monster is already at full HP.',
     },
     ja: {
         'adventure_battle': 'ADVENTURE / BATTLE',
@@ -593,6 +595,8 @@ const languageData = {
         'log_copied_attack': 'カリコピーは${copiedRank}の攻撃をコピーした！',
         'log_kariheal_initiate': 'カリヒールを使用！回復させる自分の前衛カードを選んでください。',
         'log_kariheal_success': '【${rank}】がカリヒールで全回復した！',
+        'log_kariheal_no_targets': '回復できる前衛モンスターがいません。',
+        'log_kariheal_target_full_hp': 'このモンスターはすでにHPが満タンです。',
     }
 };
 
@@ -805,7 +809,8 @@ function getInitialState() {
         coinTossTarget: null,
         isCopyingAttack: false,
         isSelectingCopyTarget: false,
-        copiedAttackProperties: null
+        copiedAttackProperties: null,
+        isHealingTargetSelection: false
     };
 }
 
@@ -1455,8 +1460,8 @@ function renderField(id, field, isOpponent) {
                 cardEl.style.outline = '4px solid purple'; // Visual cue for copied attack target
             }
             // NEW: Highlight friendly front-line cards for healing target selection
-            if (state.isHealingTargetSelection && !isOpponent && friendlyCardIndex !== -1 && friendlyCardIndex < 3) {
-                cardEl.style.outline = '4px solid lightgreen'; // Visual cue for heal target
+            if (state.isHealingTargetSelection && !isOpponent && friendlyCardIndex !== -1 && friendlyCardIndex < 3 && card.hp < card.maxHp) {
+                cardEl.style.outline = '4px solid lightgreen';
             }
 
             if (!isOpponent && state.player.attackedIds.includes(card.id)) cardEl.classList.add('attacked');
@@ -1606,10 +1611,20 @@ function handleAttack(targetCard) {
 
     // NEW KARI-HEAL LOGIC
     if (attacker.specialAbility === 'kari_heal') {
+        const healableTargets = state.player.field.slice(0, 3).filter(c => c && c.hp < c.maxHp);
+        if (healableTargets.length === 0) {
+            addLog(getText('log_kariheal_no_targets'));
+            // Since the ability "fails", we should still mark Kari-Heal as having "attacked".
+            state.player.attackedIds.push(attacker.id);
+            state.selectedCard = null;
+            hideAttackMenu();
+            render();
+            return;
+        }
         state.isHealingTargetSelection = true;
         addLog(getText('log_kariheal_initiate'));
-        render(); // Render to highlight selectable friendly cards
-        return; // Stop further attack processing
+        render();
+        return;
     }
 
     if (attacker.specialAbility === 'copy') {
@@ -1691,6 +1706,11 @@ function handleHealTargetSelection(targetCard, index) {
     if (friendlyCardIndex === -1 || friendlyCardIndex > 2) {
         addLog(getText('log_only_unit_can_be_healed')); // Reusing this log, but could add a new one
         return;
+    }
+
+    if (targetCard.hp >= targetCard.maxHp) {
+        addLog(getText('log_kariheal_target_full_hp'));
+        return; // Don't heal a full-HP card
     }
 
     targetCard.hp = targetCard.maxHp; // Fully heal
