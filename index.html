@@ -356,7 +356,21 @@ function stateCheck() {
     const allCards = [...state.player.field, ...state.opponent.field].filter(c => c);
     
     allCards.forEach(card => {
-        if (!card || card.statusEffects.length === 0) return;
+        if (!card) return;
+
+        // --- Sleep check ---
+        if (card.isSleeping) {
+            const isHeads = Math.random() < 0.5; // 50% chance to wake up
+            if (isHeads) {
+                card.isSleeping = false;
+                addLog(`${card.rank}はコイントスの結果、目を覚ました！`);
+            } else {
+                addLog(`${card.rank}はコイントスの結果、まだ眠っている...`);
+            }
+        }
+        // --- End Sleep check ---
+
+        if (card.statusEffects.length === 0) return;
 
         card.statusEffects.forEach(effect => {
             let damage = 0;
@@ -1135,6 +1149,17 @@ function createCardEl(card) {
             effectBadge.textContent = `${initial}`;
             statusContainer.appendChild(effectBadge);
         });
+        if (card.isSleeping) {
+            const sleepBadge = document.createElement('div');
+            sleepBadge.style.background = 'rgba(50, 50, 200, 0.8)';
+            sleepBadge.style.color = 'white';
+            sleepBadge.style.fontSize = '0.5em';
+            sleepBadge.style.padding = '1px 2px';
+            sleepBadge.style.borderRadius = '3px';
+            sleepBadge.style.fontWeight = 'bold';
+            sleepBadge.textContent = 'Sl'; // Initialism for Sleep
+            statusContainer.appendChild(sleepBadge);
+        }
         div.appendChild(statusContainer);
     }
 
