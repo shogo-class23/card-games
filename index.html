@@ -539,6 +539,7 @@ const languageData = {
         'log_use_2draw': 'Used [2DRAW]! Drew 2 cards!',
         'log_use_3draw': 'Used [3DRAW]! Drew 3 cards!',
         'log_use_4draw': 'Used [4DRAW]! Drew 4 cards!',
+        'log_use_handexchange': 'Used [HANDEXCHANGE]! Exchanged hand with deck!',
         'log_deck_empty': 'Deck is empty!',
         'log_use_heal': 'Used [HEAL]! Choose a card to heal!',
         'log_use_skip': 'Used [SKIP]! Skipping opponent\'s turn!',
@@ -639,6 +640,7 @@ const languageData = {
         'log_use_2draw': '【2DRAW】を使用！カードを2枚引いた。！',
         'log_use_3draw': '【3DRAW】を使用！カードを3枚引いた。！',
         'log_use_4draw': '【4DRAW】を使用！カードを4枚引いた。！',
+        'log_use_handexchange': '【手札入れ替え】を使用！手札を全て山札に戻し、引き直した。！',
         'log_deck_empty': '山札が空だ。！',
         'log_use_heal': '【HEAL】を使用！回復させる自分のカードを選んでほしいぴょん！',
         'log_use_skip': '【SKIP】を使用！相手のターンをスキップする。！',
@@ -736,11 +738,11 @@ function toggleLanguage() {
 
 const SUITS = ['fire', 'water', 'wind', 'earth'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW'];
+const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE'];
 
 const RANK_VALUES = { 
     'A': 14, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
-    '2DRAW': 0, 'HEAL': 0, 'SKIP': 0, '3DRAW': 0, '4DRAW': 0 
+    '2DRAW': 0, 'HEAL': 0, 'SKIP': 0, '3DRAW': 0, '4DRAW': 0, 'HANDEXCHANGE': 0 
 };
 
 // Helper to extract power from monsterName (displayName)
@@ -1493,6 +1495,14 @@ function drawCards(count) {
     }
 }
 
+// Helper function to shuffle an array (Fisher-Yates algorithm)
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+    }
+}
+
 function useSupportCard(card) {
     if (state.gameOver || state.turn !== 'player') {
         addLog(getText('log_support_card_not_in_battle'));
@@ -1524,6 +1534,25 @@ function useSupportCard(card) {
         case 'SKIP':
             addLog(getText('log_use_skip'));
             state.skipOpponentTurn = true; // Set a flag to skip opponent's turn
+            cardUsed = true;
+            break;
+        case 'HANDEXCHANGE':
+            addLog(getText('log_use_handexchange'));
+            const cardsInHandCount = state.player.hand.length - 1; // Exclude HANDEXCHANGE itself
+
+            // Return cards from hand to deck
+            state.player.hand.forEach(c => {
+                if (c !== card) { // Don't return the HANDEXCHANGE card itself
+                    state.player.deck.push(c);
+                }
+            });
+            state.player.hand = []; // Clear hand except for the HANDEXCHANGE card
+
+            shuffleArray(state.player.deck); // Shuffle the deck
+
+            // Draw new cards equal to the number of cards returned
+            drawCards(cardsInHandCount);
+            
             cardUsed = true;
             break;
     }
