@@ -125,8 +125,8 @@
 
 <div id="coin-flip-screen" class="screen" style="flex-direction: column; background: rgba(0,0,0,0.9); font-weight: bold; color: #FFF; text-align: center;">
     <div id="coin-flip-title" style="font-size: 3em; margin-bottom: 20px;"></div>
-    <div id="cointoss-result" style="font-size: 2.2em; font-weight: bold; color: yellow; height: 60px;"></div>
-    <button id="cointoss-btn" class="game-button" style="padding: 15px 30px; font-size: 1.5em; background:#4CAF50" onclick="handleCoinToss()">コイントス！</button>
+    <div id="cointoss-result" style="font-size: 4em; font-weight: bold; color: yellow; height: 80px;"></div>
+    <button id="cointoss-btn" class="game-button" style="padding: 15px 30px; font-size: 1.5em; background:#4CAF50" onclick="handleCoinTossButtonClick()">コイントス！</button>
 </div>
 
 <div id="title-screen" class="screen active">
@@ -370,16 +370,57 @@ function processSleepCheckQueue(callback) {
     }
 
     const card = state.sleepCheckQueue.shift();
-    
-    showScreen('coin-flip-screen');
+    const cardOwner = getCardOwner(card);
+
+    showScreen('coin-flip-screen'); // Always show the coin flip screen
     const title = document.getElementById('coin-flip-title');
     title.textContent = `${card.rank}のスリープチェック！`;
-    document.getElementById('cointoss-btn').style.display = 'inline-block';
-    document.getElementById('cointoss-result').textContent = '';
+    const cointossBtn = document.getElementById('cointoss-btn');
+    const resultDiv = document.getElementById('cointoss-result');
+    resultDiv.textContent = ''; // Clear previous result
 
-    // Temporarily replace the onclick for the coin toss button
-    const coinTossBtn = document.getElementById('cointoss-btn');
-    coinTossBtn.onclick = () => handleSleepCoinToss(card, callback);
+    if (cardOwner === "player") {
+        cointossBtn.style.display = 'inline-block'; // Show button for player
+        state.currentCoinTossHandler = () => handleSleepCoinToss(card, callback);
+    } else if (cardOwner === "opponent") {
+        cointossBtn.style.display = 'none'; // Hide button for opponent
+        state.currentCoinTossHandler = null; // No manual click needed
+        
+        // Automate opponent's coin toss after a delay
+        setTimeout(() => {
+            performAutomatedSleepCoinToss(card, callback);
+        }, 1500); // 1.5 second delay for suspense
+    } else {
+        // Fallback for cards not found on any field
+        // Still show screen, but might not have interactive elements if no owner
+        cointossBtn.style.display = 'none';
+        state.currentCoinTossHandler = null;
+        setTimeout(() => {
+            processSleepCheckQueue(callback);
+        }, 500); // Shorter delay for unexpected state
+    }
+}
+
+function performAutomatedSleepCoinToss(card, callback) {
+    if (!card) return;
+
+    const resultDiv = document.getElementById('cointoss-result');
+    const isHeads = Math.random() < 0.5;
+
+    if (isHeads) {
+        card.isSleeping = false;
+        resultDiv.textContent = '表！';
+        addLog(`${card.rank}はコイントスの結果、目を覚ました！ (相手)`);
+    } else {
+        resultDiv.textContent = '裏...';
+        addLog(`${card.rank}はコイントスの結果、まだ眠っている... (相手)`);
+    }
+
+    setTimeout(() => {
+        showScreen('game-screen');
+        render();
+        processSleepCheckQueue(callback);
+    }, 1500);
 }
 
 function handleSleepCoinToss(card, callback) {
@@ -401,6 +442,7 @@ function handleSleepCoinToss(card, callback) {
     }
 
     setTimeout(() => {
+        state.currentCoinTossHandler = null; // Clear handler
         showScreen('game-screen');
         render();
         // Process the next card in the queue, passing the original callback
@@ -776,6 +818,20 @@ function getThematicSuitLabel(card) {
     }
 }
 
+// Helper to determine card owner
+function getCardOwner(card) {
+    if (!card) return null;
+    // Check if the card is in the player's field
+    if (state.player.field.some(fieldCard => fieldCard && fieldCard.id === card.id)) {
+        return "player";
+    }
+    // Check if the card is in the opponent's field
+    if (state.opponent.field.some(fieldCard => fieldCard && fieldCard.id === card.id)) {
+        return "opponent";
+    }
+    return null; // Card is not on any field
+}
+
 // ヘルパー関数: モンスター名から必要パワーを計算
 function getRequiredPowerFromSize(monsterName) {
     if (monsterName.startsWith("覚醒モード")) return 5;
@@ -870,11 +926,19 @@ function getInitialState() {
         copiedAttackProperties: null,
         isHealingTargetSelection: false,
         sleepCheckQueue: [],
-        isCheckingSleep: false
+        isCheckingSleep: false,
+        currentCoinTossHandler: null
     };
 }
 
-function handleCoinToss() {
+// Universal handler for the coin toss button
+function handleCoinTossButtonClick() {
+    if (state.currentCoinTossHandler) {
+        state.currentCoinTossHandler();
+    }
+}
+
+function handleKarikoinCoinToss() {
     const attacker = state.coinTossAttacker;
     const target = state.coinTossTarget;
     if (!attacker || !target) return;
@@ -914,6 +978,7 @@ function handleCoinToss() {
         state.coinTossAttacker = null;
         state.coinTossTarget = null;
         state.selectedCard = null; // Deselect card
+        state.currentCoinTossHandler = null; // Clear handler
         showScreen('game-screen'); // Return to the game screen
         render();
         if (checkWin()) return; // Check for win after the toss is fully resolved
@@ -1701,6 +1766,7 @@ function handleAttack(targetCard) {
     if (attacker.specialAbility === 'cointoss') {
         state.coinTossAttacker = attacker;
         state.coinTossTarget = targetCard; 
+        state.currentCoinTossHandler = handleKarikoinCoinToss; // Set the specific handler
         showScreen('coin-flip-screen');
         const title = document.getElementById('coin-flip-title');
         title.textContent = "カリコイン・アタック！";
@@ -2029,25 +2095,26 @@ function opponentAI() {
     state.opponent.power = 5; // Restore opponent's power
     state.player.powerInjectedThisTurn = false; // Reset player's power injection flag
     
-    stateCheck(); // <-- ADDED
-    if (state.gameOver) return; // stateCheck might end the game
+    stateCheck(() => { // Now asynchronous
+        if (state.gameOver) return;
 
-    addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
-    rotateFields();
+        addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
+        rotateFields();
 
-    // Player draws a card
-    if (state.player.deck.length > 0) {
-        state.player.hand.push(state.player.deck.shift());
-        addLog(getText('log_player_drew_card'));
-    } else {
-        addLog(getText('log_player_deck_empty'));
-    }
+        // Player draws a card
+        if (state.player.deck.length > 0) {
+            state.player.hand.push(state.player.deck.shift());
+            addLog(getText('log_player_drew_card'));
+        } else {
+            addLog(getText('log_player_deck_empty'));
+        }
 
-    state.turn = 'player';
-    document.getElementById('status-text').textContent = "自ターン";
-    addLog(getText('log_opponent_turn_end'));
-    render();
-    checkWin(); // Check for game over after opponent's turn
+        state.turn = 'player';
+        document.getElementById('status-text').textContent = "自ターン";
+        addLog(getText('log_opponent_turn_end'));
+        render();
+        checkWin(); // Check for game over after opponent's turn
+    });
 }
 
 function rotateFields() {
