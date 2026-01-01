@@ -350,27 +350,70 @@ function applyStatusEffect(targetCard, effectName) {
 
 // 新規：ターン終了時に状態異常をチェックする
 // ターン終了時に状態異常をチェックする（解除処理なし・墓地送りまで継続）
-function stateCheck() {
+function stateCheck(callback) {
     addLog("▼ 状態チェック（永続パワー発動中！） ▼");
 
     const allCards = [...state.player.field, ...state.opponent.field].filter(c => c);
+    state.sleepCheckQueue = allCards.filter(c => c && c.isSleeping);
+
+    if (state.sleepCheckQueue.length > 0) {
+        processSleepCheckQueue(callback);
+    } else {
+        finishStateCheck(callback);
+    }
+}
+
+function processSleepCheckQueue(callback) {
+    if (state.sleepCheckQueue.length === 0) {
+        finishStateCheck(callback);
+        return;
+    }
+
+    const card = state.sleepCheckQueue.shift();
+    
+    showScreen('coin-flip-screen');
+    const title = document.getElementById('coin-flip-title');
+    title.textContent = `${card.rank}のスリープチェック！`;
+    document.getElementById('cointoss-btn').style.display = 'inline-block';
+    document.getElementById('cointoss-result').textContent = '';
+
+    // Temporarily replace the onclick for the coin toss button
+    const coinTossBtn = document.getElementById('cointoss-btn');
+    coinTossBtn.onclick = () => handleSleepCoinToss(card, callback);
+}
+
+function handleSleepCoinToss(card, callback) {
+    if (!card) return;
+
+    const btn = document.getElementById('cointoss-btn');
+    btn.style.display = 'none';
+
+    const resultDiv = document.getElementById('cointoss-result');
+    const isHeads = Math.random() < 0.5;
+
+    if (isHeads) {
+        card.isSleeping = false;
+        resultDiv.textContent = '表！';
+        addLog(`${card.rank}はコイントスの結果、目を覚ました！`);
+    } else {
+        resultDiv.textContent = '裏...';
+        addLog(`${card.rank}はコイントスの結果、まだ眠っている...`);
+    }
+
+    setTimeout(() => {
+        showScreen('game-screen');
+        render();
+        // Process the next card in the queue, passing the original callback
+        processSleepCheckQueue(callback);
+    }, 1500);
+}
+
+
+function finishStateCheck(callback) {
+    const allCards = [...state.player.field, ...state.opponent.field].filter(c => c);
     
     allCards.forEach(card => {
-        if (!card) return;
-
-        // --- Sleep check ---
-        if (card.isSleeping) {
-            const isHeads = Math.random() < 0.5; // 50% chance to wake up
-            if (isHeads) {
-                card.isSleeping = false;
-                addLog(`${card.rank}はコイントスの結果、目を覚ました！`);
-            } else {
-                addLog(`${card.rank}はコイントスの結果、まだ眠っている...`);
-            }
-        }
-        // --- End Sleep check ---
-
-        if (card.statusEffects.length === 0) return;
+        if (!card || card.statusEffects.length === 0) return;
 
         card.statusEffects.forEach(effect => {
             let damage = 0;
@@ -390,22 +433,18 @@ function stateCheck() {
             }
         });
 
-        // ここでターン数を減らす処理（effect.duration-- など）を書いていないから、
-        // モンスターがフィールドにいる限り、ずっと状態異常は消えないぴょん！
-
-        // HPチェック：0になったら墓地（グラウンド）送りだぴょん
         if (card.hp <= 0) {
             if (state.player.field.includes(card)) {
                 const idx = state.player.field.indexOf(card);
-                state.player.field[idx] = null; // フィールドから消去
-                state.player.grave++; // プレイヤーの墓地へ
-                state.opponent.points++; // 相手にポイント
+                state.player.field[idx] = null;
+                state.player.grave++;
+                state.opponent.points++;
                 addLog(getFormattedText('log_player_card_destroyed', { rank: card.rank }));
             } else if (state.opponent.field.includes(card)) {
                 const idx = state.opponent.field.indexOf(card);
-                state.opponent.field[idx] = null; // フィールドから消去
-                state.opponent.grave++; // 相手の墓地へ
-                state.player.points++; // プレイヤーにポイント
+                state.opponent.field[idx] = null;
+                state.opponent.grave++;
+                state.player.points++;
                 addLog(getFormattedText('log_target_destroyed', { rank: card.rank }));
             }
         }
@@ -414,6 +453,9 @@ function stateCheck() {
     addLog("▲ 状態チェック終了 ▲");
     render(); 
     checkWin();
+    if (callback) {
+        callback();
+    }
 }
 
 
@@ -826,7 +868,9 @@ function getInitialState() {
         isCopyingAttack: false,
         isSelectingCopyTarget: false,
         copiedAttackProperties: null,
-        isHealingTargetSelection: false
+        isHealingTargetSelection: false,
+        sleepCheckQueue: [],
+        isCheckingSleep: false
     };
 }
 
@@ -1772,6 +1816,10 @@ function executeNormalAttack(targetCard, attacker) {
     if (attacker.specialAbility === 'kari_sleep') {
         targetCard.isSleeping = true;
         addLog(`${targetCard.rank}は眠ってしまった！`);
+        state.player.attackedIds.push(attacker.id);
+        state.selectedCard = null;
+        render();
+        return; // End the attack here, no damage dealt
     }
     
     const totalA = attacker.value;
@@ -1833,15 +1881,15 @@ function handleEndTurn() {
     state.player.powerInjected = false; state.player.attackedIds = []; state.player.usedSpecialAbilityIds = [];
     addLog(getText('log_turn_end'));
     
-    stateCheck(); // <-- ADDED
+    stateCheck(() => { // Pass a callback to stateCheck
+        if (state.gameOver) return;
 
-    if (state.gameOver) return; // stateCheck might end the game
-
-    addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
-    state.turn = 'opponent'; document.getElementById('status-text').textContent = "相手ターン";
-    rotateFields();
-    render(); 
-    setTimeout(opponentAI, 1000);
+        addLog(getFormattedText('log_score_summary', { playerScore: state.player.points, opponentScore: state.opponent.points }));
+        state.turn = 'opponent'; document.getElementById('status-text').textContent = "相手ターン";
+        rotateFields();
+        render(); 
+        setTimeout(opponentAI, 1000);
+    });
 }
 
 function opponentAI() {
