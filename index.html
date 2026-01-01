@@ -227,7 +227,7 @@
     <!-- Attack Menu Overlay -->
     <div id="attack-menu" style="display:none; position:absolute; background:rgba(0,0,0,0.8); border:1px solid yellow; padding:10px; border-radius:5px; flex-direction:column; gap:5px; z-index:1000;">
         <button class="game-button" id="menu-attack-btn" style="background:#ccac00;">攻撃</button>
-        <button class="game-button" id="menu-special-btn" style="background:#4CAF50;">特別技</button>
+        <button class="game-button" id="menu-special-btn" style="background:#4CAF50;">特殊能力</button>
         <button class="game-button" id="menu-cancel-btn" style="background:#888;">キャンセル</button>
     </div>
 </div>
@@ -1555,11 +1555,7 @@ function handleFieldClick(card, i) {
             healCard(card);
             return;
         }
-        // NEW: If selecting a target for Kari-Heal
-        if (state.isHealingTargetSelection) {
-            handleHealTargetSelection(card, i); // Pass index for field context
-            return;
-        }
+
 
         // If we are in attack mode and click another of our own cards, cancel the attack mode.
         if (state.isAttacking) {
