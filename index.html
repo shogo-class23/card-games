@@ -557,6 +557,12 @@ const languageData = {
         'log_opponentcall_success': 'Opponent\'s [${rank}] moved to the front row!',
         'log_selfmove_success': 'Your [${rank}] moved to the front row!',
         'log_no_back_row_cards': 'No back-row cards to move.',
+        'log_no_looseable_targets': 'No opponent front-row cards to remove power from.',
+        'log_no_healable_targets': 'No friendly unit cards to heal.',
+        'log_no_boostable_targets': 'No friendly front-row cards to boost power.',
+        'log_no_player_units': 'No player unit cards on the field.',
+        'log_no_opponent_units': 'No opponent unit cards on the field.',
+        'log_no_player_front_row_units': 'No player unit cards in the front row.',
 
         'log_deck_empty': 'Deck is empty!',
         'log_use_heal': 'Used [HEAL]! Choose a card to heal!',
@@ -676,6 +682,12 @@ const languageData = {
         'log_opponentcall_success': '相手の【${rank}】を前衛に移動させたぴょん！',
         'log_selfmove_success': '自分の【${rank}】を前衛に移動させたぴょん！',
         'log_no_back_row_cards': '移動できる後衛カードがないぴょん。',
+        'log_no_looseable_targets': 'パワーを消せる相手の前衛カードがないぴょん。',
+        'log_no_healable_targets': '回復できる味方のユニットカードがないぴょん。',
+        'log_no_boostable_targets': 'パワーをブーストできる味方の前衛カードがないぴょん。',
+        'log_no_player_units': 'フィールドに味方のユニットカードがないぴょん。',
+        'log_no_opponent_units': 'フィールドに相手のユニットカードがないぴょん。',
+        'log_no_player_front_row_units': '前衛に味方のユニットカードがないぴょん。',
         'log_deck_empty': '山札が空だ。！',
         'log_use_heal': '【HEAL】を使用！回復させる自分のカードを選んでほしいぴょん！',
         'log_use_skip': '【SKIP】を使用！相手のターンをスキップする。！',
@@ -1590,6 +1602,12 @@ function useSupportCard(card) {
             cardUsed = true;
             break;
         case 'HEAL':
+            // Check if there are any healable targets
+            const healableTargets = state.player.field.filter(c => c && !c.isSupport && c.hp < c.maxHp);
+            if (healableTargets.length === 0) {
+                addLog(getText('log_no_healable_targets'));
+                break;
+            }
             addLog(getText('log_use_heal'));
             state.isHealing = true; // 「今から回復するよ」というモードにする
             cardUsed = true;
@@ -1619,21 +1637,45 @@ function useSupportCard(card) {
             cardUsed = true;
             break;
         case 'BOOSTPOWER':
+            // Check if there are any boostable targets
+            const boostableTargets = state.player.field.slice(0, 3).filter(c => c && c.attachedPower < c.requiredPower);
+            if (boostableTargets.length === 0) {
+                addLog(getText('log_no_boostable_targets'));
+                break;
+            }
             addLog(getText('log_use_boostpower'));
             state.isBoosting = true; // Enter boosting mode
             cardUsed = true;
             break;
         case 'LOOSEPOWER':
+            // Check if there are any looseable targets
+            const looseableTargets = state.opponent.field.slice(0, 3).filter(c => c && c.attachedPower > 0);
+            if (looseableTargets.length === 0) {
+                addLog(getText('log_no_looseable_targets'));
+                break;
+            }
             addLog(getText('log_use_loosepower'));
             state.isLoosing = true; // Enter loosing mode
             cardUsed = true;
             break;
         case 'ATTACKUP':
+            // Check if player has any unit cards in the front row
+            const playerFrontRowUnits = state.player.field.slice(0, 3).filter(c => c !== null && !c.isSupport);
+            if (playerFrontRowUnits.length === 0) {
+                addLog(getText('log_no_player_front_row_units'));
+                break;
+            }
             addLog(getText('log_use_attackup'));
             state.player.attackUpActive = true;
             cardUsed = true;
             break;
         case 'ATTACKDOWN':
+            // Check if opponent has any unit cards on the field
+            const opponentUnits = state.opponent.field.filter(c => c !== null && !c.isSupport);
+            if (opponentUnits.length === 0) {
+                addLog(getText('log_no_opponent_units'));
+                break;
+            }
             addLog(getText('log_use_attackdown'));
             state.opponent.attackDownActive = true;
             cardUsed = true;
