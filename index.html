@@ -139,74 +139,17 @@
 </div>
 
 <div id="rule-screen" class="screen">
-    <h2 data-lang-key="rule">ゲーム仕様書</h2>
-    <div style="width: 80%; max-width: 800px; height: 70vh; background: rgba(0,0,0,0.7); border: 1px solid #555; overflow-y: auto; padding: 20px; text-align: left;">
-        <h3>ゲーム概要</h3>
-        <p>本作は、戦略的な思考とカードのシナジーを重視した対戦型カードゲームである。 プレイヤーと相手（AI）はそれぞれ山札からカードを引き、モンスターを構成・強化・攻撃させることで、相手モンスターを破壊しポイントを獲得する。</p>
-        
-        <h3>勝利条件</h3>
-        <ul>
-            <li>相手モンスターを撃破して5ポイントを先取りする。</li>
-            <li>または、相手フィールドのモンスターを全滅させる。</li>
-        </ul>
-
-        <h3>特徴</h3>
-        <p>モンスターの名前や能力が自動生成ロジックにより多様に変化し、常に新しい戦略が求められる。</p>
-
-        <h3>遊び方とルール</h3>
-        <h4>デッキ構成</h4>
-        <p>合計30枚のカードで構成。同名カードは2枚まで投入可能。</p>
-
-        <h4>ターンの行動</h4>
-        <ul>
-            <li>カードを1枚引く</li>
-            <li>モンスターの配置</li>
-            <li>パワー注入</li>
-            <li>攻撃</li>
-            <li>サポートカードの使い方</li>
-            <li>ターン終了時
-                <ul>
-                    <li>状態チェック（被害等の判定）を行います。</li>
-                    <li>フィールドが時計回りに回転し、次のターンへ移行する。</li>
-                </ul>
-            </li>
-        </ul>
-        
-        <h4>事項制限</h4>
-        <ul>
-            <li><b>攻撃制限:</b> 各モンスター固有の「必要パワー」を満たす必要がある。パワー不足時は攻撃不可（パワーは次ターン以降へ保持される）。</li>
-            <li><b>サポート制限：</b> サポートカードの使用は1ターンにつき2枚まで。</li>
-        </ul>
-
-        <h4>フィールド回転システム</h4>
-        <p>rotateFields関数による強制的な位置移動。 前衛（攻撃役）と後衛（待機・回復役）の役割が毎ターン入れ替わるため、数ターン先を読むだ構成が要となる。</p>
-
-        <h3>カードの種類と詳細</h3>
-        <h4>【モンスターカード】</h4>
-        <ul>
-            <li>攻撃に必要なパワー量を持つ。</li>
-            <li>前衛にいる場合のみ攻撃可能。</li>
-            <li>状態異常を与える特殊な個体も存在する。</li>
-        </ul>
-        <h4>【状態異常（マイナスパワー）】</h4>
-        <p>ターン終了時の「状態チェック」段階で効果が発揮される。</p>
-        <ul>
-            <li><b>アシッド・ポイズン:</b> 毎ターン1ダメージを与えられます。</li>
-            <li><b>イルネス:</b> 毎ターン2ダメージを考えると強力な病。</li>
-            <li><b>スリープ:</b> 覚醒判定（コイントス）に成功するまで攻撃行動は成り立ちません。</li>
-        </ul>
-        <h4>【特殊能力モンスター】</h4>
-        <ul>
-            <li><b>コピー能力：</b> 相手モンスターの攻撃力を模倣して戦う。</li>
-            <li><b>カリージョウ:</b> 直接的な憲法ではなく、状態異常の付与に特化。</li>
-        </ul>
-        <h4>【サポートカード】</h4>
-        <ul>
-            <li><b>ドロー系：</b> 2枚〜4枚のカードを引き、手札を補充します。</li>
-            <li><b>位置操作系:</b> 「相手呼び出し」または「自分移動」により、フィールド上の構成を置き換える。</li>
-            <li><b>強化・回復系：</b> パワーの付与や、永続する異常を解除する「覚悟ヒール」。</li>
-            <li><b>その他:</b> バフ・デバフ、手札の引き直しなどが存在する。</li>
-        </ul>
+    <h2 data-lang-key="rule">ゲームルール</h2>
+    <p id="rule-intro-text" style="font-size: 1.2em; color: var(--accent); margin-bottom: 20px;"></p>
+    <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom: 20px;">
+        <div class="menu-btn" style="width:200px; font-size:1em; padding:10px;" onclick="displayRuleDetails('winConditions')">勝利条件</div>
+        <div class="menu-btn" style="width:200px; font-size:1em; padding:10px;" onclick="displayRuleDetails('fieldRotation')">フィールド回転システムについて</div>
+        <div class="menu-btn" style="width:200px; font-size:1em; padding:10px;" onclick="displayRuleDetails('progression')">進行について</div>
+        <div class="menu-btn" style="width:200px; font-size:1em; padding:10px;" onclick="displayRuleDetails('statusEffects')">状態異常と特殊なものについて</div>
+        <div class="menu-btn" style="width:200px; font-size:1em; padding:10px;" onclick="displayRuleDetails('supportCards')">サポートカードについて</div>
+    </div>
+    <div id="rule-details-display" style="width: 80%; max-width: 800px; height: 50vh; background: rgba(0,0,0,0.7); border: 1px solid #555; overflow-y: auto; padding: 20px; text-align: left;">
+        <!-- Rule details will be displayed here -->
     </div>
     <div class="menu-btn" data-lang-key="back_to_title" onclick="showScreen('title-screen')">BACK</div>
 </div>
@@ -314,7 +257,62 @@
 </div>
 
 <script>
-// --- 名前の生成ロジック ---
+const ruleTexts = {
+    intro: "一手で戦況が回る。フィールドを制する者が勝者だ。",
+    winConditions: `<h3>勝利条件</h3>
+        <p>以下のいずれかを満たしたプレイヤーが勝利となります。</p>
+        <ul>
+            <li><b>ポイント勝利:</b> 相手のモンスターを累計 5体 撃破する。</li>
+            <li><b>殲滅勝利:</b> 相手フィールド上のモンスターを すべて撃破 する。</li>
+        </ul>`,
+    fieldRotation: `<h3>フィールド回転システム</h3>
+        <p>本ゲームの最大の特徴は、ターン終了時に発生する 「フィールド回転」 です。</p>
+        <ul>
+            <li>ターンが終了するたびに、全モンスターが <b>時計回り</b> に一歩ずつ移動します。</li>
+            <li><b>前衛:</b> 攻撃が可能ですが、相手からの攻撃対象となります。</li>
+            <li><b>後衛:</b> 攻撃はできませんが、次ターンの攻撃に向けたパワー貯蔵や回復、支援に適した安全圏です。</li>
+            <li><b>戦略の要:</b> 数ターン後にどのモンスターが前衛に来るかを予測し、配置とパワー注入を行う必要があります。</li>
+        </ul>`,
+    progression: `<h3>進行について</h3>
+        <ul>
+            <li><b>ドローフェーズ:</b> 山札からカードを1枚引きます。</li>
+            <li><b>メインフェーズ:</b> モンスターの配置、パワー注入、サポートカードの使用（1ターン2枚まで）を自由な順序で行います。</li>
+            <li><b>バトルフェーズ:</b> 必要パワーを満たした前衛モンスターで相手を攻撃します。</li>
+            <li><b>エンドフェーズ:</b> 状態異常によるダメージ判定を行い、フィールドが回転して次ターンへ移行します。</li>
+        </ul>`,
+    statusEffects: `<h3>状態異常と特殊なものについて</h3>
+        <p>特殊な攻撃を受けると、モンスターは「状態異常」に陥ることがあります。</p>
+        <ul>
+            <li><b>アシッド / ポイズン / ダーティ / ブラッド:</b> 毎ターン固定ダメージ（1）を受けます。</li>
+            <li><b>イルネス:</b> ターン経過とともに ダメージ量が増加 します([1, 3, 5, 7, 9]のシーケンス)。早期の対処が求められます。</li>
+            <li><b>タイヤード:</b> ターン経過とともに ダメージ量が増加 します([1, 2, 3, 4, 5]のシーケンス)。早期の対処が求められます。</li>
+            <li><b>スリープ:</b> 行動不能状態です。ターン開始時の判定に成功するまで攻撃できません。</li>
+            <li><b>ジョウカ（Joka）:</b> 自身の能力で味方の状態異常を解除できるヒーラーです。</li>
+            <li><b>イミテイト（コピー）:</b> 相手の攻撃力を模倣して戦うことができます。</li>
+        </ul>`,
+    supportCards: `<h3>サポートカードについて</h3>
+        <ul>
+            <li><b>ドロー系:</b> 2〜4枚補充。手札を全て入れ替える「Hand Ex」も強力。</li>
+            <li><b>位置操作系:</b> 「相手呼び出し」「自分移動」で回転の運命を変える。</li>
+            <li><b>特殊魔法:</b> 
+                <ul>
+                    <li><b>SKIP:</b> 相手のターンを丸ごと消し去る。</li>
+                    <li><b>リバース:</b> 回転方向を逆転させる。</li>
+                </ul>
+            </li>
+            <li><b>回復・強化系:</b>
+                <ul>
+                    <li><b>コンディションヒール:</b> 厄介な状態異常を即座に治す。</li>
+                    <li><b>ブースト / ルーズ:</b> パワーを操作する。</li>
+                    <li><b>バフ / デバフ:</b> 攻撃力を一時的に増減させる。</li>
+                </ul>
+            </li>
+        </ul>`
+};
+
+function displayRuleDetails(key) {
+    document.getElementById('rule-details-display').innerHTML = ruleTexts[key];
+}
 const sizes = [
     "ミニ", "ノーマル", "ジャイアント", "ハイミニ", "ハイノーマル", "ハイジャイアント",
     "伝説のミニ", "伝説のノーマル", "伝説のジャイアント", "ロボミニ", "ロボノーマル", "ロボジャイアント",
@@ -1385,6 +1383,10 @@ function showScreen(id) {
     document.getElementById(id).classList.add('active');
     updateUIText(); // Update text every time a screen is shown
     if (id === 'collection-screen') initializeAndRenderCollection(true);
+    if (id === 'rule-screen') {
+        document.getElementById('rule-intro-text').innerHTML = ruleTexts.intro;
+        document.getElementById('rule-details-display').innerHTML = ''; // Clear details
+    }
 }
 
 function initializeAndRenderCollection(shouldRender = true) {
