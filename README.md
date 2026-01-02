@@ -1,4 +1,4 @@
-# 『刻印モンスター (Mark-Inscribed Monster)』 ゲーム仕様書
+# Mark-Inscribed Monsterゲーム仕様書
 
 ## 📋 ゲーム概要
 本作は、戦略的な思考とカードのシナジーを重視した対戦型カードゲームである。
