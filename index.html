@@ -758,7 +758,7 @@ const languageData = {
         'log_select_target_for_copied_attack': 'コピーした攻撃の対象を選択してください。',
         'log_copied_attack': 'カリコピーは${copiedRank}の攻撃をコピーした！',
         'log_kariheal_initiate': 'カリヒールを使用！回復させる自分の前衛カードを選んでください。',
-        'log_joka_heal_initiate': 'ジョカを使用！状態異常を回復させる味方のカードを選んでください。',
+        'log_joka_heal_initiate': 'ジョウカを使用！状態異常を回復させる味方のカードを選んでください。',
         'log_kariheal_success': '【${rank}】がカリヒールで全回復した！',
         'log_kariheal_no_targets': '回復できる前衛モンスターがいません。',
         'log_kariheal_target_full_hp': 'このモンスターはすでにHPが満タンです。',
@@ -1318,7 +1318,7 @@ function initializeAndRenderCollection(shouldRender = true) {
         fullCollection.push(karisleep);
 
         // --- New card: Joka ---
-        const joka = new Card('special', 'joka', 'unit', 'ジョカ', {
+        const joka = new Card('special', 'joka', 'unit', 'ジョウカ', {
             hp: 7,
             maxHp: 7,
             value: 2, // Low attack, focuses on support
