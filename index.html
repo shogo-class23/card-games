@@ -1399,6 +1399,12 @@ function createCardEl(card) {
     div.className = `card ${card.suit || ''}`;
     div.dataset.cardId = card.id;
 
+    // Define shape arrays once at the beginning of the function
+    const stars = ["チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ", "コピー"];
+    const circles = ["ヒール", "アングリー", "ジョイ", "ソロー", "プレシャー", "ラブ", "ヘイト", "フィアー", "サプライズ", "ウォント", "アバンダンド"];
+    const triangles = ["ポイズン", "ダーティ", "ブラッド", "パラリシス", "イルネス", "アシッド", "タイヤード"];
+    const patterns = ["チェック", "ドット", "ワールプール", "メロディー"];
+
     // --- 状態異常の表示 ---
     if (card.statusEffects && card.statusEffects.length > 0) {
         const statusContainer = document.createElement('div');
@@ -1449,6 +1455,8 @@ function createCardEl(card) {
             shapeClass = "star-mark";
         } else if (triangles.includes(p)) {
             shapeClass = "triangle-mark";
+        } else if (circles.includes(p)) {
+            shapeClass = "circle-mark";
         }
 
         div.innerHTML = `
