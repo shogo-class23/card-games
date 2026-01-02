@@ -854,7 +854,7 @@ function toggleLanguage() {
 
 const SUITS = ['fire', 'water', 'wind', 'earth'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE','BOOSTPOWER','LOOSEPOWER','ATTACKUP','ATTACKDOWN','OPPONENTCALL','SELFMOVE','CONDITIONHEAL'];
+const SUPPORTS = ['2DRAW','HEAL','SKIP','3DRAW','4DRAW','HANDEXCHANGE','BOOSTPOWER','LOOSEPOWER','ATTACKUP','ATTACKDOWN','OPPONENTCALL','SELFMOVE','CONDITIONHEAL', 'REVERSE'];
 
 const RANK_VALUES = { 
     'A': 14, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
@@ -1062,7 +1062,8 @@ function getInitialState() {
         sleepCheckQueue: [],
         isCheckingSleep: false,
         currentCoinTossHandler: null,
-        isJokaHealing: false // New state for Joka's healing ability
+        isJokaHealing: false, // New state for Joka's healing ability
+        fieldRotationDirection: 'clockwise' // Default field rotation direction
     };
 }
 
@@ -1459,6 +1460,7 @@ function getSupportCardDisplayName(rank) {
         case 'OPPONENTCALL': return 'Opp Call';
         case 'SELFMOVE': return 'Self Move';
         case 'CONDITIONHEAL': return 'Cond Heal';
+        case 'REVERSE': return 'リバース'; // New Reverse card
     }
 }
 
@@ -1898,6 +1900,11 @@ function useSupportCard(card) {
             }
             addLog(getText('log_use_conditionheal'));
             state.isConditionHealing = true;
+            cardUsed = true;
+            break;
+        case 'REVERSE': // New Support Card: Reverse Field Rotation
+            state.fieldRotationDirection = (state.fieldRotationDirection === 'clockwise') ? 'counter-clockwise' : 'clockwise';
+            addLog(`フィールドの回転方向が${state.fieldRotationDirection === 'clockwise' ? '時計回り' : '反時計回り'}になりました！`);
             cardUsed = true;
             break;
     }
@@ -2852,14 +2859,24 @@ function rotateFields() {
     // Player's field
     const pField = state.player.field;
     if (!pField.every(c => c === null)) {
-        const pLast = pField.pop();
-        pField.unshift(pLast);
+        if (state.fieldRotationDirection === 'clockwise') {
+            const pLast = pField.pop();
+            pField.unshift(pLast);
+        } else { // Counter-clockwise
+            const pFirst = pField.shift();
+            pField.push(pFirst);
+        }
     }
     // Opponent's field
     const oField = state.opponent.field;
     if (!oField.every(c => c === null)) {
-        const oLast = oField.pop();
-        oField.unshift(oLast);
+        if (state.fieldRotationDirection === 'clockwise') {
+            const oLast = oField.pop();
+            oField.unshift(oLast);
+        } else { // Counter-clockwise
+            const oFirst = oField.shift();
+            oField.push(oFirst);
+        }
     }
 }
 
