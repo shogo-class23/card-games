@@ -336,13 +336,28 @@ function getInitialism(powerName) {
 function applyStatusEffect(targetCard, effectName) {
     if (!targetCard) return;
 
-    // すでに同じ効果がかかっているか確認
+    // Check if the card already has this specific effect
     const existingEffect = targetCard.statusEffects.find(e => e.name === effectName);
     
-    // まだかかっていなければ追加するぴょん！
-    // ターン数のカウント（duration）などは持たせないことで永続にするぴょん。
+    // If not existing, add the effect with initial properties
     if (!existingEffect) {
-        targetCard.statusEffects.push({ name: effectName });
+        let newEffect;
+        switch (effectName) {
+            case 'イルネス':
+                newEffect = { name: effectName, level: 1 };
+                break;
+            case 'タイヤード':
+                newEffect = { name: effectName, level: 1 };
+                break;
+            case 'パラリシス':
+                newEffect = { name: effectName, turnsApplied: 0 };
+                break;
+            // Default for other status effects (アシッド, ポイズン, ダーティ, ブラッド)
+            default:
+                newEffect = { name: effectName };
+                break;
+        }
+        targetCard.statusEffects.push(newEffect);
         addLog(getFormattedText('log_status_applied', { effect: effectName, rank: targetCard.rank }));
     }
 }
@@ -456,23 +471,55 @@ function finishStateCheck(callback) {
     allCards.forEach(card => {
         if (!card || card.statusEffects.length === 0) return;
 
+        let effectsToRemove = [];
+
         card.statusEffects.forEach(effect => {
             let damage = 0;
-            // ここで各マイナスパワーのダメージ量を決めるぴょん
-            if (effect.name === 'アシッド') {
-                damage = 1; 
-            } else if (effect.name === 'イルネス') {
-                damage = 2;
-            } else if (effect.name === 'ポイズン') {
-                damage = 1;
+            let removeEffect = false;
+
+            switch (effect.name) {
+                case 'イルネス': // Illness increases by 2 each turn and decreases (1, 3, 5, 7, 9).
+                    damage = effect.level;
+                    effect.level += 2;
+                    // if (effect.level > 9) { // Removed after max level reached
+                    //     removeEffect = true;
+                    // }
+                    break;
+                case 'タイヤード': // Tired increases by 1 each turn and decreases (1, 2, 3, 4, 5).
+                    damage = effect.level;
+                    effect.level += 1;
+                    // if (effect.level > 5) { // Removed after max level reached
+                    //     removeEffect = true;
+                    // }
+                    break;
+                case 'パラリシス': // Paralysis: Next opponent's turn, that card cannot attack. Resolves after that turn ends.
+                    effect.turnsApplied++;
+                    if (effect.turnsApplied > 0) { // Removed after 1 turn active
+                        removeEffect = true;
+                    }
+                    break;
+                case 'アシッド': // These are now permanent.
+                case 'ポイズン':
+                case 'ダーティ': // Changed to 1 damage
+                case 'ブラッド': // Changed to 1 damage
+                    damage = 1; // Fixed 1 damage
+                    // removeEffect = true; // REVERTED: Do not remove automatically
+                    break;
+                // Add other status effects here if they are permanent or have different rules
             }
-            // 他の状態異常も、ここにダメージ設定を追加できるぴょん！
 
             if (damage > 0) {
                 card.hp -= damage;
                 addLog(getFormattedText('log_status_damage', { rank: card.rank, effect: effect.name, damage: damage }));
             }
+
+            if (removeEffect) {
+                effectsToRemove.push(effect);
+            }
         });
+
+        // Remove effects that met their removal conditions
+        card.statusEffects = card.statusEffects.filter(effect => !effectsToRemove.includes(effect));
 
         if (card.hp <= 0) {
             if (state.player.field.includes(card)) {
@@ -569,6 +616,7 @@ const languageData = {
         'log_joka_single_heal_no_front_row': 'Only front-row cards can be targeted for single heal.',
         'log_no_status_effect_targets': 'No friendly cards with status effects to heal.',
         'log_kariijyou_abnormal_state': '[${oppCardRank}] applied an Acid status to [${targetCardRank}]!',
+        'log_minus_power_status_applied': '[${rank}] attacks! [${targetRank}] is now affected by [${effect}]!',
 
         'log_deck_empty': 'Deck is empty!',
         'log_use_heal': 'Used [HEAL]! Choose a card to heal!',
@@ -621,6 +669,7 @@ const languageData = {
         'log_opponent_mulligan': 'Opponent\'s initial hand had no unit cards, so they will redraw.',
         'log_opponent_mulligan_warning': 'Warning: Opponent has reached the mulligan limit. Their deck may have too few unit cards.',
         'log_select_attack_target': 'Select a target to attack with [${rank}]!',
+        'log_paralysis_cannot_attack': '[${rank}] cannot attack due to Paralysis!',
         'log_special_not_implemented': 'Special move is not yet implemented!',
         'log_player_first': 'You are going first.',
         'log_opponent_first': 'The opponent is going first.',
@@ -704,6 +753,7 @@ const languageData = {
         'log_joka_single_heal_no_front_row': '前衛のカードのみ単体ヒールの対象にできます。',
         'log_no_status_effect_targets': '状態異常にかかっている味方のカードがないぴょん。',
         'log_kariijyou_abnormal_state': '相手の【${oppCardRank}】が【${targetCardRank}】にアシッド状態を付与した！',
+        'log_minus_power_status_applied': '【${rank}】が攻撃！【${targetRank}】は[${effect}]状態になった！',
         'log_deck_empty': '山札が空だ。！',
         'log_use_heal': '【HEAL】を使用！回復させる自分のカードを選んでほしいぴょん！',
         'log_use_skip': '【SKIP】を使用！相手のターンをスキップする。！',
@@ -755,6 +805,7 @@ const languageData = {
         'log_opponent_mulligan': '相手の初期手札にユニットカードがなかったので、引き直します。',
         'log_opponent_mulligan_warning': '警告: 相手のマリガン上限に達しました。デッキにユニットカードが少ない可能性があります。',
         'log_select_attack_target': '【${rank}】で攻撃対象を選択してください。！',
+        'log_paralysis_cannot_attack': '【${rank}】は麻痺のため攻撃できない！',
         'log_special_not_implemented': '特別技はまだ実装されていない。！',
         'log_player_first': 'あなたが先行です。',
         'log_opponent_first': '相手が先行です。',
@@ -833,6 +884,12 @@ function getMonsterPowerFromName(monsterName) {
 
 const starPowers = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール"];
 const emotionPowers = ["アングリー", "ジョイ", "ソロー", "プレシャー", "ラブ", "ヘイト", "フィアー", "サプライズ", "ウォント"];
+
+// Global definition of shape-categorization arrays
+const stars = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ", "コピー"];
+const circles = ["アングリー", "ジョイ", "ソロー", "プレシャー", "ラブ", "ヘイト", "フィアー", "サプライズ", "ウォント", "アバンダンド"];
+const triangles = ["ポイズン", "ダーティ", "ブラッド", "パラリシス", "イルネス", "アシッド", "タイヤード"];
+const patterns = ["チェック", "ドット", "ワールプール", "メロディー"];
 
 const thematicColorMap = {
     // Direct power names
@@ -2394,18 +2451,23 @@ function handleConditionHealSelection(targetCard) {
  * @returns {boolean} True if a special ability was handled and replaced the normal attack, false otherwise.
  */
 function executeSpecialAbilityAction(attacker, targetCard, playerType) {
-    if (!attacker || !attacker.specialAbility || !targetCard) {
+    if (!attacker || !targetCard) { // Removed attacker.specialAbility check here as it's now handled below
         return false;
     }
 
     let abilityHandled = false;
 
+    // Rule: If a monster's powerName is a "Minus Power", it applies that status effect on attack.
+    if (attacker.powerName && triangles.includes(attacker.powerName)) {
+        applyStatusEffect(targetCard, attacker.powerName);
+        addLog(getFormattedText('log_minus_power_status_applied', { rank: attacker.rank, effect: attacker.powerName, targetRank: targetCard.rank }));
+        abilityHandled = true;
+        return abilityHandled; // This entirely replaces the normal attack
+    }
+
+    // Now proceed with other specific special abilities that are not "Minus Powers"
     switch (attacker.specialAbility) {
-        case 'abnormal_state': // カリイジョウ: Applies Acid status
-            applyStatusEffect(targetCard, 'アシッド');
-            addLog(getFormattedText('log_kariijyou_abnormal_state', { oppCardRank: attacker.rank, targetCardRank: targetCard.rank }));
-            abilityHandled = true;
-            break;
+        // case 'abnormal_state': is removed as it's handled by the generic Minus Power rule
         case 'kari_sleep': // カリスリープ: Applies Sleep status
             applyStatusEffect(targetCard, 'スリープ'); // Assuming 'スリープ' is a recognized status effect
             targetCard.isSleeping = true; // Also set the flag
@@ -2655,6 +2717,12 @@ function opponentAI() {
             // --- Kari-Sleep: Prevent attacking when asleep ---
             if (oppCard.isSleeping) {
                 addLog(`${oppCard.rank}は眠っていて攻撃できない！`);
+                return;
+            }
+
+            // NEW: Paralysis: Prevent attacking when paralyzed
+            if (oppCard.statusEffects.some(effect => effect.name === 'パラリシス')) {
+                addLog(getFormattedText('log_paralysis_cannot_attack', { rank: oppCard.rank }));
                 return;
             }
 
