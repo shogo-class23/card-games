@@ -344,10 +344,10 @@ function applyStatusEffect(targetCard, effectName) {
         let newEffect;
         switch (effectName) {
             case 'イルネス':
-                newEffect = { name: effectName, level: 1 };
+                newEffect = { name: effectName, level: 0 }; // Initialize level as index
                 break;
             case 'タイヤード':
-                newEffect = { name: effectName, level: 1 };
+                newEffect = { name: effectName, level: 0 }; // Initialize level as index
                 break;
             case 'パラリシス':
                 newEffect = { name: effectName, turnsApplied: 0 };
@@ -473,24 +473,24 @@ function finishStateCheck(callback) {
 
         let effectsToRemove = [];
 
+        // Define damage sequences for cycling effects
+        const illnessDamageSequence = [1, 3, 5, 7, 9];
+        const tiredDamageSequence = [1, 2, 3, 4, 5];
+
         card.statusEffects.forEach(effect => {
             let damage = 0;
             let removeEffect = false;
 
             switch (effect.name) {
                 case 'イルネス': // Illness increases by 2 each turn and decreases (1, 3, 5, 7, 9).
-                    damage = effect.level;
-                    effect.level += 2;
-                    // if (effect.level > 9) { // Removed after max level reached
-                    //     removeEffect = true;
-                    // }
+                    damage = illnessDamageSequence[effect.level];
+                    effect.level = (effect.level + 1) % illnessDamageSequence.length; // Cycle level as index
+                    // Not removed automatically
                     break;
                 case 'タイヤード': // Tired increases by 1 each turn and decreases (1, 2, 3, 4, 5).
-                    damage = effect.level;
-                    effect.level += 1;
-                    // if (effect.level > 5) { // Removed after max level reached
-                    //     removeEffect = true;
-                    // }
+                    damage = tiredDamageSequence[effect.level];
+                    effect.level = (effect.level + 1) % tiredDamageSequence.length; // Cycle level as index
+                    // Not removed automatically
                     break;
                 case 'パラリシス': // Paralysis: Next opponent's turn, that card cannot attack. Resolves after that turn ends.
                     effect.turnsApplied++;
@@ -1352,7 +1352,7 @@ function initializeAndRenderCollection(shouldRender = true) {
             value: 4, // Base value, will be changed by copy ability
             requiredPower: 3,
             powerName: 'イミテイト',
-            specialAbility: 'copy'
+            // specialAbility: 'copy' // Removed: now handled by powerName 'イミテイト'
         });
         fullCollection.push(karikopi);
 
@@ -1363,7 +1363,7 @@ function initializeAndRenderCollection(shouldRender = true) {
             value: 3, // Cannot attack
             requiredPower: 2,
             powerName: 'ヒール', // Heal power
-            specialAbility: 'kari_heal'
+            // specialAbility: 'kari_heal' // Removed: now handled by powerName 'ヒール'
         });
         fullCollection.push(kariheal);
 
@@ -1374,7 +1374,7 @@ function initializeAndRenderCollection(shouldRender = true) {
             value: 3, // Can attack, but for sleep effect
             requiredPower: 3,
             powerName: 'スリープ', // Sleep power
-            specialAbility: 'kari_sleep'
+            // specialAbility: 'kari_sleep' // Removed: now handled by powerName 'スリープ'
         });
         fullCollection.push(karisleep);
 
@@ -1385,7 +1385,7 @@ function initializeAndRenderCollection(shouldRender = true) {
             value: 2, // Low attack, focuses on support
             requiredPower: 2,
             powerName: 'ヒール', // Heal power
-            specialAbility: 'joka_heal'
+            // specialAbility: 'joka_heal' // Removed: now handled by powerName 'ヒール'
         });
         fullCollection.push(joka);
     }
@@ -2441,55 +2441,94 @@ function handleConditionHealSelection(targetCard) {
     render();
 }
 
-/**
- * Executes the special ability of an attacking card.
- * This function is designed to be called instead of normal damage dealing if the card has a special ability
- * that replaces its attack.
- * @param {Card} attacker The card performing the special ability.
- * @param {Card} targetCard The target of the special ability.
- * @param {'player'|'opponent'} playerType The type of player controlling the attacker.
- * @returns {boolean} True if a special ability was handled and replaced the normal attack, false otherwise.
- */
-function executeSpecialAbilityAction(attacker, targetCard, playerType) {
-    if (!attacker || !targetCard) { // Removed attacker.specialAbility check here as it's now handled below
-        return false;
+function executeSpecialAbilityAction(attacker, targetCard, isPlayerAttack) {
+    // Define triangles here for local scope
+    const triangles = ["ポイズン", "ダーティ", "ブラッド", "パラリシス", "イルネス", "アシッド", "タイヤード"];
+
+    // ユーザーからの直接指示: スリープ、ヒール、イミテイト（コピー）のモンスター効果をpowerNameで処理する
+    if (attacker.powerName === 'スリープ') {
+        addLog(getFormattedText('log_minus_power_status_applied', { rank: attacker.rank, targetRank: targetCard.rank, effect: attacker.powerName }));
+        applyStatusEffect(targetCard, 'スリープ');
+        targetCard.isSleeping = true; // Apply sleep state
+        return true; // Special ability used
+    } else if (attacker.powerName === 'ヒール') {
+        // Heal 1 HP to the attacker itself
+        attacker.hp = Math.min(attacker.maxHp, attacker.hp + 1);
+        addLog(getFormattedText('log_heal_success', { rank: attacker.rank, hp: attacker.hp }));
+        return true; // Special ability used
+    } else if (attacker.powerName === 'イミテイト') {
+        // Initiate copy special ability
+        addLog(getFormattedText('log_select_card_to_copy_attack_from'));
+        state.isCopyingAttack = true;
+        state.copiedAttackAttacker = attacker;
+        return true; // Special ability used (pending target selection)
     }
-
-    let abilityHandled = false;
-
-    // Rule: If a monster's powerName is a "Minus Power", it applies that status effect on attack.
-    if (attacker.powerName && triangles.includes(attacker.powerName)) {
+    
+    // Minus power effects (remaining ones not specifically called out above)
+    if (triangles.includes(attacker.powerName)) {
+        addLog(getFormattedText('log_minus_power_status_applied', { rank: attacker.rank, targetRank: targetCard.rank, effect: attacker.powerName }));
         applyStatusEffect(targetCard, attacker.powerName);
-        addLog(getFormattedText('log_minus_power_status_applied', { rank: attacker.rank, effect: attacker.powerName, targetRank: targetCard.rank }));
-        abilityHandled = true;
-        return abilityHandled; // This entirely replaces the normal attack
+        return true; // Special ability used
     }
 
-    // Now proceed with other specific special abilities that are not "Minus Powers"
+    if (!attacker.specialAbility) {
+        return false; // No special ability to execute
+    }
+
     switch (attacker.specialAbility) {
-        // case 'abnormal_state': is removed as it's handled by the generic Minus Power rule
-        case 'kari_sleep': // カリスリープ: Applies Sleep status
-            applyStatusEffect(targetCard, 'スリープ'); // Assuming 'スリープ' is a recognized status effect
-            targetCard.isSleeping = true; // Also set the flag
-            addLog(`カリスリープが${targetCard.rank}を眠らせた！`);
-            abilityHandled = true;
-            break;
-        // Add other special abilities here that replace normal attacks
-        case 'cointoss': // For Karikoin: Initiates a coin toss
-            state.coinTossAttacker = attacker;
-            state.coinTossTarget = targetCard; 
-            state.currentCoinTossHandler = handleKarikoinCoinToss; // Set the specific handler
-            showScreen('coin-flip-screen');
-            const title = document.getElementById('coin-flip-title');
-            title.textContent = "カリコイン・アタック！";
-            document.getElementById('cointoss-btn').style.display = 'inline-block';
-            document.getElementById('cointoss-result').textContent = '';
-            abilityHandled = true;
-            break;
-        // case 'copy': // For Karikopi, this also involves selection
+        case 'cointoss':
+            if (isPlayerAttack) {
+                // Ensure there's a target
+                if (!targetCard) {
+                    addLog("ターゲットが選択されていません。");
+                    return false;
+                }
+                addLog(`コイントス攻撃！ ${attacker.rank} vs ${targetCard.rank}`);
+                state.coinTossAttacker = attacker;
+                state.coinTossTarget = targetCard;
+                state.currentCoinTossHandler = handleKarikoinCoinToss;
+                showScreen('coin-flip-screen');
+                document.getElementById('coin-flip-title').textContent = `${attacker.rank}のコイントス攻撃！`;
+                document.getElementById('cointoss-btn').style.display = 'inline-block';
+            } else {
+                // Opponent's automated cointoss
+                const oppResultDiv = document.getElementById('cointoss-result'); // Ensure this is not visible
+                const isHeads = Math.random() < 0.5;
+                let damage = 0;
+                if (isHeads) {
+                    damage = attacker.value;
+                    addLog(`相手のコイントスは表！ ${attacker.rank}が${targetCard.rank}に${damage}ダメージ！`);
+                    targetCard.hp -= damage;
+                } else {
+                    addLog(`相手のコイントスは裏... ${attacker.rank}の攻撃は失敗。`);
+                }
+                if (targetCard.hp <= 0) {
+                    const idx = state.player.field.indexOf(targetCard);
+                    if (idx !== -1) {
+                        state.player.field[idx] = null;
+                        state.player.grave++;
+                        state.opponent.points++; // Opponent gets point for destroying player's card
+                    }
+                    addLog(getFormattedText('log_player_card_destroyed', { rank: targetCard.rank }));
+                }
+                render();
+                checkWin();
+            }
+            return true; // Special ability used
+        case 'abnormal_state':
+            addLog(getFormattedText('log_kariijyou_abnormal_state', { oppCardRank: attacker.rank, targetCardRank: targetCard.rank }));
+            applyStatusEffect(targetCard, 'アシッド'); // Kariijou applies Acid status
+            return true;
+        // case 'copy': // Now handled by powerName 'イミテイト'
+        //     addLog(getFormattedText('log_select_card_to_copy_attack_from'));
+        //     state.isCopyingAttack = true;
+        //     state.copiedAttackAttacker = attacker;
+        //     return true;
+        // case 'kari_heal': // Now handled by powerName 'ヒール'
+        // case 'joka_heal': // Now handled by powerName 'ヒール'
+        // case 'kari_sleep': // Now handled by powerName 'スリープ'
     }
-
-    return abilityHandled;
+    return false;
 }
 
 
