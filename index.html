@@ -626,6 +626,7 @@ const languageData = {
         'log_select_target_for_copied_attack': 'Select a target for the copied attack.',
         'log_copied_attack': 'Karikopi copied ${copiedRank}\'s attack!',
         'log_kariheal_initiate': 'Kari-Heal activated! Select a friendly front-line card to fully heal.',
+        'log_joka_heal_initiate': 'Joka activated! Select a friendly card to remove status effects!',
         'log_kariheal_success': '[${rank}] fully healed by Kari-Heal!',
         'log_kariheal_no_targets': 'There are no damaged friendly front-line monsters to heal.',
         'log_kariheal_target_full_hp': 'This monster is already at full HP.',
@@ -757,6 +758,7 @@ const languageData = {
         'log_select_target_for_copied_attack': 'コピーした攻撃の対象を選択してください。',
         'log_copied_attack': 'カリコピーは${copiedRank}の攻撃をコピーした！',
         'log_kariheal_initiate': 'カリヒールを使用！回復させる自分の前衛カードを選んでください。',
+        'log_joka_heal_initiate': 'ジョカを使用！状態異常を回復させる味方のカードを選んでください。',
         'log_kariheal_success': '【${rank}】がカリヒールで全回復した！',
         'log_kariheal_no_targets': '回復できる前衛モンスターがいません。',
         'log_kariheal_target_full_hp': 'このモンスターはすでにHPが満タンです。',
@@ -998,7 +1000,8 @@ function getInitialState() {
         isConditionHealing: false, // New state for Condition Heal target selection
         sleepCheckQueue: [],
         isCheckingSleep: false,
-        currentCoinTossHandler: null
+        currentCoinTossHandler: null,
+        isJokaHealing: false // New state for Joka's healing ability
     };
 }
 
@@ -1312,6 +1315,17 @@ function initializeAndRenderCollection(shouldRender = true) {
             specialAbility: 'kari_sleep'
         });
         fullCollection.push(karisleep);
+
+        // --- New card: Joka ---
+        const joka = new Card('special', 'ジョカ', 'unit', 'ジョカ', {
+            hp: 7,
+            maxHp: 7,
+            value: 2, // Low attack, focuses on support
+            requiredPower: 2,
+            powerName: 'ヒール', // Heal power
+            specialAbility: 'joka_heal'
+        });
+        fullCollection.push(joka);
     }
     if (shouldRender) {
         renderCardGrid(fullCollection);
@@ -1916,6 +1930,10 @@ function renderField(id, field, isOpponent) {
             if (state.isConditionHealing && !isOpponent && card && card.statusEffects && card.statusEffects.length > 0) {
                 cardEl.style.outline = '4px solid #00FFFF'; // Cyan color
             }
+            // NEW: Highlight player cards with status effects for Joka Heal
+            if (state.isJokaHealing && !isOpponent && card && card.statusEffects && card.statusEffects.length > 0) {
+                cardEl.style.outline = '4px solid limegreen'; // Green color for healing
+            }
 
             if (!isOpponent && state.player.attackedIds.includes(card.id)) cardEl.classList.add('attacked');
             if (state.selectedCard === card) cardEl.classList.add('selected');
@@ -2165,13 +2183,51 @@ function handleHealTargetSelection(targetCard, index) {
         return; // Don't heal a full-HP card
     }
 
-    targetCard.hp = targetCard.maxHp; // Fully heal
+    targetCard.hp = targetCard.maxHp; // Full heal
+    if (healer) { // Make sure Kari-Heal card is still in play
+        state.player.usedSpecialAbilityIds.push(healer.id);
+    }
     addLog(getFormattedText('log_kariheal_success', { rank: targetCard.rank }));
+    resetSpecialAbilityStates(); // Reset all special ability related states
+    state.selectedCard = null; // Deselect Kari-Heal
+    render();
+}
 
-    state.player.usedSpecialAbilityIds.push(healer.id); // Mark Kari-Heal as having used its special ability
+function resetSpecialAbilityStates() {
+    state.isHealing = false;
     state.isHealingTargetSelection = false;
-    state.selectedCard = null;
-    hideAttackMenu();
+    state.isBoosting = false;
+    state.isLoosing = false;
+    state.isOpponentCalling = false;
+    state.isSelfMoving = false;
+    state.isConditionHealing = false;
+    state.isJokaHealing = false; // New: reset Joka's healing state
+    state.isCopyingAttack = false;
+    state.isSelectingCopyTarget = false;
+    state.copiedAttackProperties = null;
+    state.coinTossAttacker = null;
+    state.coinTossTarget = null;
+    state.currentCoinTossHandler = null;
+}
+
+function handleJokaHealSelection(targetCard) {
+    const healer = state.selectedCard; // This is Joka
+    if (!healer || !state.isJokaHealing || !targetCard) return;
+
+    // Check if the target is a friendly card with status effects
+    const friendlyCardWithStatusEffects = state.player.field.includes(targetCard) && targetCard.statusEffects && targetCard.statusEffects.length > 0;
+    if (!friendlyCardWithStatusEffects) {
+        addLog(getText('log_no_status_effect_targets'));
+        return;
+    }
+
+    if (healer) { // Make sure Joka card is still in play
+        state.player.usedSpecialAbilityIds.push(healer.id);
+    }
+    targetCard.statusEffects = []; // Clear all status effects
+    addLog(getFormattedText('log_conditionheal_success', { rank: targetCard.rank })); // Reusing this log for now
+    resetSpecialAbilityStates(); // Reset all special ability related states
+    state.selectedCard = null; // Deselect Joka
     render();
 }
 
@@ -2460,6 +2516,7 @@ function confirmPlacement() {
 }
 
 function handleEndTurn() {
+    resetSpecialAbilityStates(); // Clear all special ability related states at the end of the turn
     state.player.powerInjected = false; state.player.attackedIds = []; state.player.usedSpecialAbilityIds = [];
     addLog(getText('log_turn_end'));
     
@@ -2866,6 +2923,26 @@ document.getElementById('menu-special-btn').onclick = () => {
         }
         state.isHealingTargetSelection = true;
         addLog(getText('log_kariheal_initiate'));
+        hideAttackMenu();
+        render();
+    } else if (state.selectedCard && state.selectedCard.specialAbility === 'joka_heal') {
+        if (state.player.usedSpecialAbilityIds.includes(state.selectedCard.id)) {
+            addLog(getText('log_special_already_used'));
+            hideAttackMenu();
+            state.selectedCard = null;
+            render();
+            return;
+        }
+        const cardsWithStatusEffects = state.player.field.filter(c => c && c.statusEffects && c.statusEffects.length > 0);
+        if (cardsWithStatusEffects.length === 0) {
+            addLog(getText('log_no_status_effect_targets')); // Reusing existing log message
+            hideAttackMenu();
+            state.selectedCard = null;
+            render();
+            return;
+        }
+        state.isJokaHealing = true;
+        addLog(getFormattedText('log_joka_heal_initiate', { rank: state.selectedCard.rank })); // New log message for Joka
         hideAttackMenu();
         render();
     } else {
