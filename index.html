@@ -1345,6 +1345,20 @@ function initializeAndRenderCollection(shouldRender = true) {
         });
         fullCollection.push(kariijou);
 
+        // --- New Minus Power monsters added to fullCollection ---
+        // Paralysis Monster (パラリー鼻k)
+        fullCollection.push(new Card('special', 'パラリー鼻k', 'unit', 'パラリー鼻k', {
+            hp: 4, maxHp: 4, value: 3, requiredPower: 1, powerName: 'パラリシス', specialAbility: 'paralysis_effect'
+        }));
+        // Illness Monster (イルネスマン)
+        fullCollection.push(new Card('special', 'イルネスマン', 'unit', 'イルネスマン', {
+            hp: 6, maxHp: 6, value: 4, requiredPower: 2, powerName: 'イルネス', specialAbility: 'illness_effect'
+        }));
+        // Tired Monster (タイヤードン)
+        fullCollection.push(new Card('special', 'タイヤードン', 'unit', 'タイヤードン', {
+            hp: 5, maxHp: 5, value: 3, requiredPower: 1, powerName: 'タイヤード', specialAbility: 'tired_effect'
+        }));
+
         const karikopi = new Card('special', 'カリコピー', 'unit', 'カリコピー', {
             hp: 6,
             maxHp: 6,
@@ -2048,6 +2062,10 @@ function renderField(id, field, isOpponent) {
                         handleConditionHealSelection(card);
                         return;
                     }
+                    if (state.isJokaHealing) { // Handle Joka Heal target selection
+                        handleJokaHealSelection(card);
+                        return;
+                    }
 
                     // If we are in attack mode and click another of our own cards, cancel the attack mode.
                     if (state.isAttacking) {
@@ -2450,7 +2468,7 @@ function executeSpecialAbilityAction(attacker, targetCard, isPlayerAttack) {
         applyStatusEffect(targetCard, 'スリープ');
         targetCard.isSleeping = true; // Apply sleep state
         return true; // Special ability used
-    } else if (attacker.powerName === 'ヒール') {
+    } else if (attacker.powerName === 'ヒール' && attacker.specialAbility !== 'joka_heal') { // Add condition to exclude Joka
         // Heal 1 HP to the attacker itself
         attacker.hp = Math.min(attacker.maxHp, attacker.hp + 1);
         addLog(getFormattedText('log_heal_success', { rank: attacker.rank, hp: attacker.hp }));
@@ -2961,12 +2979,26 @@ function startGameWithDeck(deckId) {
     // 2. Opponent's deck setup (Custom)
     let opponentDeck = [];
 
-    // Add two Kari-Ijyou cards
-    for (let i = 0; i < 2; i++) {
+    // Add more Kari-Ijyou cards for testing
+    for (let i = 0; i < 5; i++) { // Increased to 5 cards
         opponentDeck.push(new Card('special', 'カリイジョウ', 'unit', 'カリイジョウ', { 
             hp: 5, maxHp: 5, value: 5, requiredPower: 2, powerName: 'アシッド', specialAbility: 'abnormal_state' 
         }));
     }
+
+    // Add specific Minus Power monsters for testing
+    // Paralysis Monster
+    opponentDeck.push(new Card('special', 'パラリー鼻k', 'unit', 'パラリー鼻k', { // Renamed
+        hp: 4, maxHp: 4, value: 3, requiredPower: 1, powerName: 'パラリシス', specialAbility: 'paralysis_effect'
+    }));
+    // Illness Monster
+    opponentDeck.push(new Card('special', 'イルネスマン', 'unit', 'イルネスマン', {
+        hp: 6, maxHp: 6, value: 4, requiredPower: 2, powerName: 'イルネス', specialAbility: 'illness_effect'
+    }));
+    // Tired Monster
+    opponentDeck.push(new Card('special', 'タイヤードン', 'unit', 'タイヤードン', {
+        hp: 5, maxHp: 5, value: 3, requiredPower: 1, powerName: 'タイヤード', specialAbility: 'tired_effect'
+    }));
 
     // Add three 4DRAW cards
     for (let i = 0; i < 3; i++) {
