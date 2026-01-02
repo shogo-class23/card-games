@@ -565,6 +565,8 @@ const languageData = {
         'log_support_limit_reached': 'Support card usage limit (2 per turn) reached.',
         'log_use_conditionheal': 'Used [CONDITIONHEAL]! Select a friendly card to remove status effects!',
         'log_conditionheal_success': '[${rank}]\'s status effects have been removed!',
+        'log_joka_single_heal_success': '[${rank}] had one [${effect}] status effect removed!',
+        'log_joka_single_heal_no_front_row': 'Only front-row cards can be targeted for single heal.',
         'log_no_status_effect_targets': 'No friendly cards with status effects to heal.',
         'log_kariijyou_abnormal_state': '[${oppCardRank}] applied an Acid status to [${targetCardRank}]!',
 
@@ -698,6 +700,8 @@ const languageData = {
         'log_support_limit_reached': 'サポートカードの使用上限（1ターン2枚）に達したぴょん。',
         'log_use_conditionheal': '【コンディションヒール】を使用！味方のカードを選んで状態異常を回復させるぴょん！',
         'log_conditionheal_success': '【${rank}】の状態異常が回復したぴょん！',
+        'log_joka_single_heal_success': '【${rank}】の[${effect}]状態が回復したぴょん！',
+        'log_joka_single_heal_no_front_row': '前衛のカードのみ単体ヒールの対象にできます。',
         'log_no_status_effect_targets': '状態異常にかかっている味方のカードがないぴょん。',
         'log_kariijyou_abnormal_state': '相手の【${oppCardRank}】が【${targetCardRank}】にアシッド状態を付与した！',
         'log_deck_empty': '山札が空だ。！',
@@ -1940,7 +1944,7 @@ function renderField(id, field, isOpponent) {
                 cardEl.style.outline = '4px solid #00FFFF'; // Cyan color
             }
             // NEW: Highlight player cards with status effects for Joka Heal
-            if (state.isJokaHealing && !isOpponent && card && card.statusEffects && card.statusEffects.length > 0) {
+            if (state.isJokaHealing && !isOpponent && card && card.statusEffects && card.statusEffects.length > 0 && friendlyCardIndex < 3) {
                 cardEl.style.outline = '4px solid limegreen'; // Green color for healing
             }
 
@@ -2230,11 +2234,18 @@ function handleJokaHealSelection(targetCard) {
         return;
     }
 
+    // Check if the target is in the front row
+    const targetCardIndex = state.player.field.indexOf(targetCard);
+    if (targetCardIndex === -1 || targetCardIndex > 2) { // Not in front row (0, 1, 2)
+        addLog(getText('log_joka_single_heal_no_front_row'));
+        return;
+    }
+
     if (healer) { // Make sure Joka card is still in play
         state.player.usedSpecialAbilityIds.push(healer.id);
     }
-    targetCard.statusEffects = []; // Clear all status effects
-    addLog(getFormattedText('log_conditionheal_success', { rank: targetCard.rank })); // Reusing this log for now
+    const healedEffect = targetCard.statusEffects.shift(); // Remove only the first status effect
+    addLog(getFormattedText('log_joka_single_heal_success', { rank: targetCard.rank, effect: healedEffect.name })); // Use new log message
     resetSpecialAbilityStates(); // Reset all special ability related states
     state.selectedCard = null; // Deselect Joka
     render();
