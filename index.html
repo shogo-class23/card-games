@@ -2514,52 +2514,22 @@ function executeSpecialAbilityAction(attacker, targetCard, isPlayerAttack) {
                 checkWin();
             }
             return true; // Special ability used
-        case 'abnormal_state':
-            addLog(getFormattedText('log_kariijyou_abnormal_state', { oppCardRank: attacker.rank, targetCardRank: targetCard.rank }));
-<<<<<<< HEAD
-            applyStatusEffect(targetCard, 'アシッド'); // Kariijou applies Acid status
-            return true;
-        // case 'copy': // Now handled by powerName 'イミテイト'
-        //     addLog(getFormattedText('log_select_card_to_copy_attack_from'));
-        //     state.isCopyingAttack = true;
-        //     state.copiedAttackAttacker = attacker;
-        //     return true;
-        // case 'kari_heal': // Now handled by powerName 'ヒール'
-        // case 'joka_heal': // Now handled by powerName 'ヒール'
-        // case 'kari_sleep': // Now handled by powerName 'スリープ'
-=======
-            abilityHandled = true;
-            break;
-        case 'kari_sleep': // カリスリープ: Applies Sleep status
-            applyStatusEffect(targetCard, 'スリープ'); // Assuming 'スリープ' is a recognized status effect
-            targetCard.isSleeping = true; // Also set the flag
-            addLog(`カリスリープが${targetCard.rank}を眠らせた！`);
-            abilityHandled = true;
-            break;
-        // Add other special abilities here that replace normal attacks
-        case 'cointoss': // For Karikoin: Initiates a coin toss
-            state.coinTossAttacker = attacker;
-            state.coinTossTarget = targetCard; 
-            state.currentCoinTossHandler = handleKarikoinCoinToss; // Set the specific handler
-            showScreen('coin-flip-screen');
-            const title = document.getElementById('coin-flip-title');
-            title.textContent = "カリコイン・アタック！";
-            document.getElementById('cointoss-btn').style.display = 'inline-block';
-            document.getElementById('cointoss-result').textContent = '';
-            abilityHandled = true;
-            break;
-        case 'copy':
-            // Logic for Karikopi's copy ability
-            addLog(getText('log_select_card_to_copy_attack_from'));
-            state.isCopyingAttack = true; // Enter copy targeting mode
-            state.selectedCard = abilityOwner; // Keep Karikopi card selected as ability source
-            state.player.usedSpecialAbilityIds.push(abilityOwner.id); // Mark ability as used
-            break;
->>>>>>> e6b1eb8 (feat: Implement status effect logic and refine attack handling)
-    }
-    return false;
-}
-
+                case 'abnormal_state':
+                    addLog(getFormattedText('log_kariijyou_abnormal_state', { oppCardRank: attacker.rank, targetCardRank: targetCard.rank }));
+                    applyStatusEffect(targetCard, 'アシッド'); // Kariijou applies Acid status
+                    return true;
+                case 'cointoss': // For Karikoin: Initiates a coin toss
+                    state.coinTossAttacker = attacker;
+                    state.coinTossTarget = targetCard;
+                    state.currentCoinTossHandler = handleKarikoinCoinToss; // Set the specific handler
+                    showScreen('coin-flip-screen');
+                    document.getElementById('coin-flip-title').textContent = "カリコイン・アタック！";
+                    document.getElementById('cointoss-btn').style.display = 'inline-block';
+                    document.getElementById('cointoss-result').textContent = '';
+                    return true;
+            }
+            return false;
+        }
 
 
 
