@@ -919,6 +919,7 @@ class Card {
         this.monsterName = monsterName; // Preserve original monster name
         this.displayName = monsterName || rank; // Use monsterName if provided, otherwise use rank
         this.isSupport = (type === 'support' || SUPPORTS.includes(rank)); // Determine isSupport first
+        this.specialAbility = options.specialAbility || null; // Explicitly assign specialAbility early
 
         this.isTripleType = false;
         this.isDoubleType = false;
@@ -1443,7 +1444,7 @@ function createCardEl(card) {
     if (card.isFaceDown) {
         div.className = 'card back';
         div.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 2em; color: white;">?</div>`;
-    } else if (card.specialAbility === 'cointoss' || card.specialAbility === 'copy' || card.specialAbility === 'abnormal_state' || card.specialAbility === 'kari_heal' || card.specialAbility === 'kari_sleep') {
+    } else if (card.specialAbility === 'cointoss' || card.specialAbility === 'copy' || card.specialAbility === 'abnormal_state' || card.specialAbility === 'kari_heal' || card.specialAbility === 'kari_sleep' || card.specialAbility === 'joka_heal') {
         const p = card.powerName;
         let shapeClass = "square-mark"; // Default
         let displayPowerName = getInitialism(p);
@@ -1485,9 +1486,9 @@ function createCardEl(card) {
         let shapeClass = "square-mark"; // その他は四角
         
         // 星の形
-        const stars = ["チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ", "コピー"];
+        const stars = ["ヒール", "チャーム", "イミテイト", "チェンジ", "プレイ", "グループ", "スリープ", "イレイス", "エンバイロンメント", "フェイク", "オール", "ネザー", "チエ", "コピー"];
         // 丸の形
-        const circles = ["ヒール", "アングリー", "ジョイ", "ソロー", "プレシャー", "ラブ", "ヘイト", "フィアー", "サプライズ", "ウォント", "アバンダンド"];
+        const circles = ["アングリー", "ジョイ", "ソロー", "プレシャー", "ラブ", "ヘイト", "フィアー", "サプライズ", "ウォント", "アバンダンド"];
         // 三角の形
         const triangles = ["ポイズン", "ダーティ", "ブラッド", "パラリシス", "イルネス", "アシッド", "タイヤード"];
         // 模様系
