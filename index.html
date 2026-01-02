@@ -498,14 +498,14 @@ function finishStateCheck(callback) {
                         removeEffect = true;
                     }
                     break;
-<<<<<<< HEAD
                 case 'アシッド': // These are now permanent and deal 1 damage.
                 case 'ポイズン':
                 case 'ダーティ': // Deals 1 damage
                 case 'ブラッド': // Deals 1 damage
                     damage = 1; // Fixed 1 damage
                     // Not removed automatically (permanent)
-                    break;            }
+                    break;
+            } // <--- ADDED THIS CLOSING BRACE
 
             if (damage > 0) {
                 card.hp -= damage;
